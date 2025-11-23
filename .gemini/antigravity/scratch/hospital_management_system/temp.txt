@@ -1,0 +1,10 @@
+        {/* New Test Order Modal */} 
+        {showNewOrderModal && ( 
+            <NewTestOrderModal 
+                onClose={() => setShowNewOrderModal(false)} 
+                onSubmit={handleCreateOrder} 
+                patients={patients} 
+                testCatalog={testCatalog} 
+                formatCurrency={formatCurrency} 
+            /> 
+        )} 

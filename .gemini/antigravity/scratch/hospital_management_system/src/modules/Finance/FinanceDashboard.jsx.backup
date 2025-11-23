@@ -1,0 +1,905 @@
+import React, { useState } from 'react';
+import { DollarSign, CreditCard, FileText, TrendingUp, TrendingDown, Shield, Download, Pill, TestTube, Hotel, Activity, Users, X, Wallet, Smartphone, Banknote, Building, Check } from 'lucide-react';
+import { useData } from '../../context/DataContext';
+// import { useCurrency } from '../../context/CurrencyContext';
+
+import CashierView from './components/CashierView';
+
+const FinanceDashboard = () => {
+    const { financialRecords, setFinancialRecords, debtRecords, setDebtRecords } = useData();
+    // const { formatCurrency } = useCurrency();
+    const formatCurrency = (amount) => `UGX ${amount.toLocaleString()}`;
+    const [activeTab, setActiveTab] = useState('overview');
+    const [reportPeriod, setReportPeriod] = useState('monthly');
+    const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+    const [selectedDebt, setSelectedDebt] = useState(null);
+    const [paymentAmount, setPaymentAmount] = useState('');
+    const [paymentMethod, setPaymentMethod] = useState('Cash');
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [processingStep, setProcessingStep] = useState('');
+    const [mobileMoneyDetails, setMobileMoneyDetails] = useState({ provider: 'MTN', phoneNumber: '' });
+    const [cardDetails, setCardDetails] = useState({ cardNumber: '', expiry: '', cvv: '', holderName: '' });
+    const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+    const [selectedReceipt, setSelectedReceipt] = useState(null);
+
+    const generateReceipt = (transaction) => {
+        setSelectedReceipt(transaction);
+        setReceiptModalOpen(true);
+    };
+
+    // Calculate totals from actual financial data
+    const totalRevenue = financialRecords.reduce((sum, record) => sum + (record.amount || 0), 0);
+    const paidRecords = financialRecords.filter(r => r.status === 'Paid');
+    const pendingRecords = financialRecords.filter(r => r.status === 'Pending');
+    const totalPaid = paidRecords.reduce((sum, r) => sum + r.amount, 0);
+    const totalPending = pendingRecords.reduce((sum, r) => sum + r.amount, 0);
+
+    // Department Performance Data
+    const departmentData = [
+        { id: 1, name: 'Laboratory', icon: TestTube, revenue: 8500000, transactions: 248, growth: 18, colorClass: 'blue' },
+        { id: 2, name: 'Pharmacy', icon: Pill, revenue: 12300000, transactions: 456, growth: 24, colorClass: 'emerald' },
+        { id: 3, name: 'Bed Management', icon: Hotel, revenue: 6200000, transactions: 89, growth: -5, colorClass: 'purple' },
+        { id: 4, name: 'Medical Services', icon: Activity, revenue: 15600000, transactions: 312, growth: 15, colorClass: 'cyan' },
+        { id: 5, name: 'Health Camps', icon: Users, revenue: 3400000, transactions: 156, growth: 32, colorClass: 'amber' },
+        { id: 6, name: 'Radiology', icon: X, revenue: 7800000, transactions: 178, growth: 12, colorClass: 'pink' },
+    ];
+
+    // Revenue by Payment Method
+    const paymentMethodData = [
+        { method: 'Cash', icon: Banknote, amount: 18500000, percentage: 34.6, transactions: 523 },
+        { method: 'Mobile Money', icon: Smartphone, amount: 16200000, percentage: 30.3, transactions: 412 },
+        { method: 'Card', icon: CreditCard, amount: 8900000, percentage: 16.6, transactions: 198 },
+        { method: 'Insurance', icon: Shield, amount: 6700000, percentage: 12.5, transactions: 89 },
+        { method: 'Bank Transfer', icon: Building, amount: 2100000, percentage: 3.9, transactions: 45 },
+        { method: 'HMS Wallet', icon: Wallet, amount: 1100000, percentage: 2.1, transactions: 67 },
+    ];
+
+
+    // Summary Stats using actual data
+    const stats = [
+        { label: 'Total Revenue', value: formatCurrency(totalRevenue), count: `${financialRecords.length} Records`, icon: DollarSign, positive: true },
+        { label: 'Total Paid', value: formatCurrency(totalPaid), count: `${paidRecords.length} Paid`, icon: Shield, positive: true },
+        { label: 'Pending Payments', value: formatCurrency(totalPending), count: `${pendingRecords.length} Pending`, icon: FileText, positive: false },
+        { label: 'Total Transactions', value: financialRecords.length.toString(), change: financialRecords.length > 0 ? '+100%' : '0%', icon: TrendingUp, positive: financialRecords.length > 0 },
+    ];
+
+    // Weekly/Monthly Report Data
+    const weeklyData = [
+        { week: 'Week 1', revenue: 12500000, expenses: 8200000, profit: 4300000 },
+        { week: 'Week 2', revenue: 14200000, expenses: 9100000, profit: 5100000 },
+        { week: 'Week 3', revenue: 13800000, expenses: 8900000, profit: 4900000 },
+        { week: 'Week 4', revenue: 15300000, expenses: 9500000, profit: 5800000 },
+    ];
+
+    const monthlyData = [
+        { month: 'Jul', revenue: 48200000, expenses: 32100000, profit: 16100000 },
+        { month: 'Aug', revenue: 51300000, expenses: 34200000, profit: 17100000 },
+        { month: 'Sep', revenue: 49800000, expenses: 33400000, profit: 16400000 },
+        { month: 'Oct', revenue: 53600000, expenses: 35700000, profit: 17900000 },
+        { month: 'Nov', revenue: 55800000, expenses: 36900000, profit: 18900000 },
+    ];
+
+    const reportData = reportPeriod === 'weekly' ? weeklyData : monthlyData;
+
+    const handleGenerateReport = () => {
+        const reportContent = {
+            period: reportPeriod,
+            generatedAt: new Date().toISOString(),
+            departments: departmentData,
+            paymentMethods: paymentMethodData,
+            summary: {
+                totalRevenue,
+                totalTransactions: paymentMethodData.reduce((sum, item) => sum + item.transactions, 0)
+            }
+        };
+
+        const dataStr = JSON.stringify(reportContent, null, 2);
+        const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+        const exportFileDefaultName = `finance_report_${reportPeriod}_${new Date().toISOString().split('T')[0]}.json`;
+
+        const linkElement = document.createElement('a');
+        linkElement.setAttribute('href', dataUri);
+        linkElement.setAttribute('download', exportFileDefaultName);
+        linkElement.click();
+    };
+
+    const handleOpenPaymentModal = (debt) => {
+        setSelectedDebt(debt);
+        setPaymentAmount(debt.amount);
+        setPaymentModalOpen(true);
+    };
+
+    const handleRecordPayment = () => {
+        if (!selectedDebt || !paymentAmount) return;
+
+        // Validation
+        if (paymentMethod === 'Mobile Money') {
+            if (!mobileMoneyDetails.phoneNumber) {
+                alert('Please enter a phone number');
+                return;
+            }
+        } else if (paymentMethod === 'Card') {
+            if (!cardDetails.cardNumber || !cardDetails.expiry || !cardDetails.cvv) {
+                alert('Please enter all card details');
+                return;
+            }
+        }
+
+        setIsProcessing(true);
+        setProcessingStep('Initiating transaction...');
+
+        // Simulate API Processing with steps
+        setTimeout(() => {
+            setProcessingStep(paymentMethod === 'Mobile Money' ? 'Requesting approval on phone...' : 'Verifying card details...');
+
+            setTimeout(() => {
+                // Simulate 10% failure rate
+                if (Math.random() < 0.1) {
+                    setIsProcessing(false);
+                    setProcessingStep('');
+                    alert('Transaction Failed: Insufficient funds or network error. Please try again.');
+                    return;
+                }
+
+                setProcessingStep('Finalizing payment...');
+
+                setTimeout(() => {
+                    const amount = Number(paymentAmount);
+
+                    // 1. Update Debt Record
+                    const updatedDebts = debtRecords.map(debt => {
+                        if (debt.id === selectedDebt.id) {
+                            const remaining = debt.amount - amount;
+                            return {
+                                ...debt,
+                                amount: remaining > 0 ? remaining : 0,
+                                status: remaining > 0 ? 'Outstanding' : 'Paid'
+                            };
+                        }
+                        return debt;
+                    });
+                    setDebtRecords(updatedDebts);
+
+                    // 2. Create Financial Transaction
+                    const newTransaction = {
+                        id: `INV-${Date.now()}`,
+                        patientId: selectedDebt.patientId,
+                        patientName: selectedDebt.patientName,
+                        amount: amount,
+                        status: 'Paid',
+                        date: new Date().toISOString().split('T')[0],
+                        time: new Date().toLocaleTimeString(),
+                        type: 'Debt Payment',
+                        method: paymentMethod,
+                        details: paymentMethod === 'Mobile Money'
+                            ? `${mobileMoneyDetails.provider} - ${mobileMoneyDetails.phoneNumber}`
+                            : paymentMethod === 'Card'
+                                ? `Visa **** ${cardDetails.cardNumber.slice(-4)}`
+                                : 'Cash Payment'
+                    };
+                    setFinancialRecords([newTransaction, ...financialRecords]);
+
+                    // 3. Close Modal & Reset
+                    setIsProcessing(false);
+                    setProcessingStep('');
+                    setPaymentModalOpen(false);
+                    setSelectedDebt(null);
+                    setPaymentAmount('');
+                    setMobileMoneyDetails({ provider: 'MTN', phoneNumber: '' });
+                    setCardDetails({ cardNumber: '', expiry: '', cvv: '', holderName: '' });
+
+                    // 4. Prompt for Receipt
+                    if (confirm('Payment processed successfully! Do you want to view the receipt?')) {
+                        generateReceipt(newTransaction);
+                    }
+                }, 1500);
+            }, 2000);
+        }, 1000);
+    };
+
+    const getDeptCardClasses = (colorClass) => {
+        const classes = {
+            blue: 'border-blue-100 bg-blue-50',
+            emerald: 'border-emerald-100 bg-emerald-50',
+            purple: 'border-purple-100 bg-purple-50',
+            cyan: 'border-cyan-100 bg-cyan-50',
+            amber: 'border-amber-100 bg-amber-50',
+            pink: 'border-pink-100 bg-pink-50'
+        };
+        return classes[colorClass] || 'border-slate-100 bg-slate-50';
+    };
+
+    const getDeptIconClasses = (colorClass) => {
+        const classes = {
+            blue: 'bg-blue-100 text-blue-600',
+            emerald: 'bg-emerald-100 text-emerald-600',
+            purple: 'bg-purple-100 text-purple-600',
+            cyan: 'bg-cyan-100 text-cyan-600',
+            amber: 'bg-amber-100 text-amber-600',
+            pink: 'bg-pink-100 text-pink-600'
+        };
+        return classes[colorClass] || 'bg-slate-100 text-slate-600';
+    };
+
+    const getDeptProgressClasses = (colorClass) => {
+        const classes = {
+            blue: 'bg-blue-500',
+            emerald: 'bg-emerald-500',
+            purple: 'bg-purple-500',
+            cyan: 'bg-cyan-500',
+            amber: 'bg-amber-500',
+            pink: 'bg-pink-500'
+        };
+        return classes[colorClass] || 'bg-slate-500';
+    };
+
+    return (
+        <div className="space-y-6 animate-fade-in pb-10">
+            {/* Header */}
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-800">Finance & Accounting</h1>
+                    <p className="text-slate-500 text-sm mt-1">Comprehensive financial management and reporting</p>
+                </div>
+                <div className="flex gap-3">
+                    <button
+                        onClick={handleGenerateReport}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors text-sm font-medium shadow-lg shadow-emerald-500/30"
+                    >
+                        <Download size={16} />
+                        Generate Report
+                    </button>
+                    <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium">
+                        <FileText size={16} />
+                        Create Invoice
+                    </button>
+                </div>
+            </div>
+            {/* Tabs */}
+            <div className="flex overflow-x-auto border-b border-slate-200 mb-6">
+                {['overview', 'cashier', 'departments', 'payment-methods', 'debt-management', 'reports'].map((tab) => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`px-4 py-2 font-medium text-sm whitespace-nowrap transition-colors relative ${activeTab === tab
+                            ? 'text-emerald-600'
+                            : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                    >
+                        {tab.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                        {activeTab === tab && (
+                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 rounded-t-full"></div>
+                        )}
+                    </button>
+                ))}
+            </div>
+
+            {activeTab === 'cashier' && <CashierView />}
+
+            {activeTab === 'overview' && (
+                <div className="space-y-6">
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {stats.map((stat, index) => (
+                            <div key={index} className="bg-white border border-slate-200 p-5 rounded-xl hover:shadow-md transition-all duration-200">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                                        <stat.icon size={20} />
+                                    </div>
+                                    <p className="text-sm text-slate-600 font-medium">{stat.label}</p>
+                                </div>
+                                <p className="text-2xl font-bold text-slate-800 mb-2">{stat.value}</p>
+                                {stat.change && (
+                                    <div className={`flex items-center gap-1 text-sm font-medium ${stat.positive ? 'text-emerald-600' : 'text-red-600'}`}>
+                                        {stat.positive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                                        {stat.change}
+                                    </div>
+                                )}
+                                {stat.count && (
+                                    <p className="text-xs text-slate-500 mt-1">{stat.count}</p>
+                                )}
+                            </div>
+                        ))}
+
+
+
+                        <div className="border-t border-slate-200 pt-6">
+                            <h2 className="text-lg font-bold text-slate-800 mb-4">Recent Transactions</h2>
+                            {financialRecords.length > 0 ? (
+                                <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-slate-50 border-b border-slate-100">
+                                            <tr>
+                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Invoice ID</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Patient ID</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Type</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Amount</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {financialRecords.map((transaction) => (
+                                                <tr key={transaction.id} className="hover:bg-slate-50">
+                                                    <td className="px-6 py-4">
+                                                        <span className="font-medium text-slate-900">{transaction.id}</span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-slate-600">{transaction.patientId}</td>
+                                                    <td className="px-6 py-4 text-slate-600">{transaction.type}</td>
+                                                    <td className="px-6 py-4 text-slate-600">{transaction.date}</td>
+                                                    <td className="px-6 py-4 font-bold text-slate-800">{formatCurrency(transaction.amount)}</td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${transaction.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                                                            }`}>
+                                                            {transaction.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <button
+                                                            onClick={() => generateReceipt(transaction)}
+                                                            className="text-primary hover:text-primary-dark text-xs font-medium"
+                                                        >
+                                                            View Receipt
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="border-2 border-dashed border-slate-200 rounded-xl p-12 text-center">
+                                    <FileText size={48} className="mx-auto text-slate-300 mb-4" />
+                                    <h3 className="text-lg font-bold text-slate-800 mb-2">No Financial Records</h3>
+                                    <p className="text-slate-500">Financial data has been reset or no transactions recorded yet</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+            )}
+
+                    {/* Departments Tab */}
+                    {
+                        activeTab === 'departments' && (
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <h2 className="text-lg font-bold text-slate-800">Department Performance</h2>
+                                    <select className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20">
+                                        <option>This Month</option>
+                                        <option>Last Month</option>
+                                        <option>Last 3 Months</option>
+                                        <option>This Year</option>
+                                    </select>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {departmentData.map((dept) => (
+                                        <div key={dept.id} className={`border rounded-xl p-5 hover:shadow-lg transition-all ${getDeptCardClasses(dept.colorClass)}`}>
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className={`p-3 rounded-lg ${getDeptIconClasses(dept.colorClass)}`}>
+                                                    <dept.icon size={24} />
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-bold text-slate-800">{dept.name}</h3>
+                                                    <p className="text-xs text-slate-500">{dept.transactions} transactions</p>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <div>
+                                                    <p className="text-sm text-slate-500">Revenue</p>
+                                                    <p className="text-2xl font-bold text-slate-800">{formatCurrency(dept.revenue)}</p>
+                                                </div>
+                                                <div className={`flex items-center gap-1 text-sm font-medium ${dept.growth >= 0 ? 'text-emerald-600' : 'text-red-600'
+                                                    }`}>
+                                                    {dept.growth >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                                                    {dept.growth >= 0 ? '+' : ''}{dept.growth}% vs last month
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="border-t border-slate-200 pt-6 mt-6">
+                                    <h3 className="font-bold text-slate-800 mb-4">Revenue Distribution</h3>
+                                    <div className="space-y-3">
+                                        {departmentData.map((dept) => {
+                                            const totalDeptRevenue = departmentData.reduce((sum, d) => sum + d.revenue, 0);
+                                            const percentage = ((dept.revenue / totalDeptRevenue) * 100).toFixed(1);
+                                            return (
+                                                <div key={dept.id} className="flex items-center gap-4">
+                                                    <div className="w-40">
+                                                        <p className="text-sm font-medium text-slate-700">{dept.name}</p>
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="flex-1 bg-slate-100 rounded-full h-2">
+                                                                <div
+                                                                    className={`h-2 rounded-full transition-all ${getDeptProgressClasses(dept.colorClass)}`}
+                                                                    style={{ width: `${percentage}%` }}
+                                                                ></div>
+                                                            </div>
+                                                            <span className="text-xs font-medium text-slate-500 w-12">{percentage}%</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="w-32 text-right">
+                                                        <p className="text-sm font-bold text-slate-800">{formatCurrency(dept.revenue)}</p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    }
+
+                    {/* Payment Methods Tab */}
+                    {
+                        activeTab === 'payment-methods' && (
+                            <div className="space-y-6">
+                                <div className="flex justify-between items-center">
+                                    <h2 className="text-lg font-bold text-slate-800">Revenue by Payment Method</h2>
+                                    <p className="text-sm text-slate-500">Total: {formatCurrency(totalRevenue)}</p>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {paymentMethodData.map((payment, index) => (
+                                        <div key={payment.method} className="border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-primary/10 rounded-lg">
+                                                        <payment.icon size={20} className="text-primary" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-bold text-slate-800">{payment.method}</h3>
+                                                        <p className="text-xs text-slate-500">{payment.transactions} transactions</p>
+                                                    </div>
+                                                </div>
+                                                <div className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs font-bold">
+                                                    {payment.percentage}%
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p className="text-2xl font-bold text-slate-800">{formatCurrency(payment.amount)}</p>
+                                                <div className="mt-3 bg-slate-100 rounded-full h-2">
+                                                    <div
+                                                        className="bg-primary h-2 rounded-full transition-all"
+                                                        style={{ width: `${payment.percentage}%` }}
+                                                    ></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="border-t border-slate-200 pt-6">
+                                    <h3 className="font-bold text-slate-800 mb-4">Payment Method Trends</h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                                        {paymentMethodData.map((payment) => (
+                                            <div key={payment.method} className="text-center p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+                                                <payment.icon size={24} className="text-primary mx-auto mb-2" />
+                                                <p className="text-xs text-slate-600 mb-1">{payment.method}</p>
+                                                <p className="text-lg font-bold text-slate-800">{payment.transactions}</p>
+                                                <p className="text-xs text-slate-500">txns</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    }
+
+                    {/* Reports Tab */}
+                    {
+                        activeTab === 'reports' && (
+                            <div className="space-y-6">
+                                <div className="flex justify-between items-center">
+                                    <h2 className="text-lg font-bold text-slate-800">Financial Reports</h2>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setReportPeriod('weekly')}
+                                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${reportPeriod === 'weekly'
+                                                ? 'bg-primary text-white'
+                                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                                }`}
+                                        >
+                                            Weekly
+                                        </button>
+                                        <button
+                                            onClick={() => setReportPeriod('monthly')}
+                                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${reportPeriod === 'monthly'
+                                                ? 'bg-primary text-white'
+                                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                                }`}
+                                        >
+                                            Monthly
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="border border-emerald-200 bg-emerald-50 rounded-xl p-5">
+                                        <p className="text-sm text-emerald-700 mb-2">Total Revenue</p>
+                                        <p className="text-2xl font-bold text-slate-800">
+                                            {formatCurrency(reportData.reduce((sum, item) => sum + item.revenue, 0))}
+                                        </p>
+                                    </div>
+                                    <div className="border border-red-200 bg-red-50 rounded-xl p-5">
+                                        <p className="text-sm text-red-700 mb-2">Total Expenses</p>
+                                        <p className="text-2xl font-bold text-slate-800">
+                                            {formatCurrency(reportData.reduce((sum, item) => sum + item.expenses, 0))}
+                                        </p>
+                                    </div>
+                                    <div className="border border-blue-200 bg-blue-50 rounded-xl p-5">
+                                        <p className="text-sm text-blue-700 mb-2">Net Profit</p>
+                                        <p className="text-2xl font-bold text-emerald-600">
+                                            {formatCurrency(reportData.reduce((sum, item) => sum + item.profit, 0))}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="border border-slate-200 rounded-xl p-6">
+                                    <h3 className="font-bold text-slate-800 mb-4">
+                                        {reportPeriod === 'weekly' ? 'Weekly' : 'Monthly'} Breakdown
+                                    </h3>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left text-sm">
+                                            <thead className="bg-slate-50 border-b border-slate-100">
+                                                <tr>
+                                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                                        {reportPeriod === 'weekly' ? 'Week' : 'Month'}
+                                                    </th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Revenue</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Expenses</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Profit</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Margin</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {reportData.map((item, index) => {
+                                                    const margin = ((item.profit / item.revenue) * 100).toFixed(1);
+                                                    return (
+                                                        <tr key={index} className="hover:bg-slate-50 transition-colors">
+                                                            <td className="px-6 py-4 font-medium text-slate-800">
+                                                                {item.week || item.month}
+                                                            </td>
+                                                            <td className="px-6 py-4 font-bold text-emerald-600">
+                                                                {formatCurrency(item.revenue)}
+                                                            </td>
+                                                            <td className="px-6 py-4 font-bold text-red-600">
+                                                                {formatCurrency(item.expenses)}
+                                                            </td>
+                                                            <td className="px-6 py-4 font-bold text-blue-600">
+                                                                {formatCurrency(item.profit)}
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">
+                                                                    {margin}%
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end">
+                                    <button
+                                        onClick={handleGenerateReport}
+                                        className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark font-medium flex items-center gap-2"
+                                    >
+                                        <Download size={16} />
+                                        Download {reportPeriod === 'weekly' ? 'Weekly' : 'Monthly'} Report
+                                    </button>
+                                </div>
+                            </div>
+                        )
+                    }
+
+                    {/* Debt Management Tab */}
+                    {
+                        activeTab === 'debt-management' && (
+                            <div className="space-y-6">
+                                <div className="flex justify-between items-center">
+                                    <h2 className="text-lg font-bold text-slate-800">Outstanding Debts</h2>
+                                    <div className="flex gap-2">
+                                        <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
+                                            Total Outstanding: {formatCurrency(debtRecords.filter(d => d.status !== 'Paid').reduce((sum, d) => sum + d.amount, 0))}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-slate-50 border-b border-slate-100">
+                                            <tr>
+                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Patient</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Invoice ID</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Due Date</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Amount</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {debtRecords.filter(d => d.status !== 'Paid').length > 0 ? (
+                                                debtRecords.filter(d => d.status !== 'Paid').map((debt) => (
+                                                    <tr key={debt.id} className="hover:bg-slate-50 transition-colors">
+                                                        <td className="px-6 py-4">
+                                                            <div className="font-medium text-slate-900">{debt.patientName}</div>
+                                                            <div className="text-xs text-slate-500">{debt.patientId}</div>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-slate-600">{debt.invoiceId}</td>
+                                                        <td className="px-6 py-4 text-slate-600">{debt.dueDate}</td>
+                                                        <td className="px-6 py-4 font-bold text-slate-800">{formatCurrency(debt.amount)}</td>
+                                                        <td className="px-6 py-4">
+                                                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${debt.status === 'Overdue' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                                                                }`}>
+                                                                {debt.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <button
+                                                                onClick={() => handleOpenPaymentModal(debt)}
+                                                                className="px-3 py-1.5 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 text-xs font-medium transition-colors"
+                                                            >
+                                                                Record Payment
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan="6" className="px-6 py-12 text-center text-slate-500">
+                                                        No outstanding debts found.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )
+                    }
+
+
+                    {/* Payment Modal */}
+                    {
+                        paymentModalOpen && (
+                            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
+                                <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 m-4">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h3 className="text-lg font-bold text-slate-800">Record Debt Payment</h3>
+                                        <button
+                                            onClick={() => setPaymentModalOpen(false)}
+                                            className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                                        >
+                                            <X size={20} className="text-slate-500" />
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Patient</label>
+                                            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-slate-800 font-medium">
+                                                {selectedDebt?.patientName} ({selectedDebt?.patientId})
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Outstanding Amount</label>
+                                            <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-amber-800 font-bold">
+                                                {selectedDebt && formatCurrency(selectedDebt.amount)}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Payment Amount (UGX)</label>
+                                            <input
+                                                type="number"
+                                                value={paymentAmount}
+                                                onChange={(e) => setPaymentAmount(e.target.value)}
+                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                                                placeholder="Enter amount"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Payment Method</label>
+                                            <select
+                                                value={paymentMethod}
+                                                onChange={(e) => setPaymentMethod(e.target.value)}
+                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                                            >
+                                                <option value="Cash">Cash</option>
+                                                <option value="Mobile Money">Mobile Money</option>
+                                                <option value="Card">Card</option>
+                                                <option value="Bank Transfer">Bank Transfer</option>
+                                            </select>
+                                        </div>
+
+                                        {/* Mobile Money Inputs */}
+                                        {paymentMethod === 'Mobile Money' && (
+                                            <div className="space-y-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                                                <div>
+                                                    <label className="block text-xs font-medium text-slate-500 mb-1">Provider</label>
+                                                    <select
+                                                        value={mobileMoneyDetails.provider}
+                                                        onChange={(e) => setMobileMoneyDetails({ ...mobileMoneyDetails, provider: e.target.value })}
+                                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                                                    >
+                                                        <option value="MTN">MTN Mobile Money</option>
+                                                        <option value="Airtel">Airtel Money</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-medium text-slate-500 mb-1">Phone Number</label>
+                                                    <input
+                                                        type="text"
+                                                        value={mobileMoneyDetails.phoneNumber}
+                                                        onChange={(e) => setMobileMoneyDetails({ ...mobileMoneyDetails, phoneNumber: e.target.value })}
+                                                        placeholder="e.g., 0771234567"
+                                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Card Inputs */}
+                                        {paymentMethod === 'Card' && (
+                                            <div className="space-y-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                                                <div>
+                                                    <label className="block text-xs font-medium text-slate-500 mb-1">Card Number</label>
+                                                    <div className="relative">
+                                                        <CreditCard size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                        <input
+                                                            type="text"
+                                                            value={cardDetails.cardNumber}
+                                                            onChange={(e) => setCardDetails({ ...cardDetails, cardNumber: e.target.value })}
+                                                            placeholder="0000 0000 0000 0000"
+                                                            className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-slate-500 mb-1">Expiry Date</label>
+                                                        <input
+                                                            type="text"
+                                                            value={cardDetails.expiry}
+                                                            onChange={(e) => setCardDetails({ ...cardDetails, expiry: e.target.value })}
+                                                            placeholder="MM/YY"
+                                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-slate-500 mb-1">CVV</label>
+                                                        <input
+                                                            type="text"
+                                                            value={cardDetails.cvv}
+                                                            onChange={(e) => setCardDetails({ ...cardDetails, cvv: e.target.value })}
+                                                            placeholder="123"
+                                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-medium text-slate-500 mb-1">Cardholder Name</label>
+                                                    <input
+                                                        type="text"
+                                                        value={cardDetails.holderName}
+                                                        onChange={(e) => setCardDetails({ ...cardDetails, holderName: e.target.value })}
+                                                        placeholder="Name on Card"
+                                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="flex gap-3 pt-4">
+                                            <button
+                                                onClick={() => setPaymentModalOpen(false)}
+                                                className="flex-1 px-4 py-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 font-medium transition-colors"
+                                                disabled={isProcessing}
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                onClick={handleRecordPayment}
+                                                disabled={isProcessing}
+                                                className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 font-medium transition-colors flex justify-center items-center gap-2"
+                                            >
+                                                {isProcessing ? (
+                                                    <>
+                                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                        Processing...
+                                                    </>
+                                                ) : (
+                                                    'Confirm Payment'
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    }
+                    {/* Receipt Modal */}
+                    {
+                        receiptModalOpen && selectedReceipt && (
+                            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
+                                <div className="bg-white rounded-xl shadow-xl w-full max-w-md m-4 overflow-hidden">
+                                    <div className="bg-slate-900 text-white p-6 text-center relative">
+                                        <button
+                                            onClick={() => setReceiptModalOpen(false)}
+                                            className="absolute top-4 right-4 text-slate-400 hover:text-white"
+                                        >
+                                            <X size={20} />
+                                        </button>
+                                        <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                                            <Check size={24} className="text-white" />
+                                        </div>
+                                        <h3 className="text-xl font-bold">Payment Successful</h3>
+                                        <p className="text-slate-400 text-sm">Transaction ID: {selectedReceipt.id}</p>
+                                    </div>
+                                    <div className="p-6 space-y-4">
+                                        <div className="text-center mb-6">
+                                            <p className="text-sm text-slate-500 mb-1">Total Amount Paid</p>
+                                            <p className="text-3xl font-bold text-slate-800">{formatCurrency(selectedReceipt.amount)}</p>
+                                        </div>
+
+                                        <div className="space-y-3 text-sm border-t border-b border-slate-100 py-4">
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-500">Date & Time</span>
+                                                <span className="font-medium text-slate-800">{selectedReceipt.date} {selectedReceipt.time}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-500">Patient Name</span>
+                                                <span className="font-medium text-slate-800">{selectedReceipt.patientName}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-500">Payment Method</span>
+                                                <span className="font-medium text-slate-800">{selectedReceipt.method}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-500">Details</span>
+                                                <span className="font-medium text-slate-800">{selectedReceipt.details}</span>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={() => {
+                                                alert('Receipt downloaded!');
+                                                setReceiptModalOpen(false);
+                                            }}
+                                            className="w-full py-3 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            <Download size={18} />
+                                            Download Receipt
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    }
+
+
+                    {/* Enhanced Processing Modal */}
+                    {
+                        isProcessing && (
+                            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] animate-fade-in">
+                                <div className="bg-white rounded-xl shadow-xl p-8 max-w-sm w-full text-center">
+                                    <div className="w-16 h-16 border-4 border-emerald-100 border-t-emerald-500 rounded-full animate-spin mx-auto mb-4"></div>
+                                    <h3 className="text-lg font-bold text-slate-800 mb-2">Processing Payment</h3>
+                                    <p className="text-slate-500 text-sm animate-pulse">{processingStep}</p>
+                                </div>
+                            </div>
+                        )
+                    }
+                </div >
+            );
+};
+
+            export default FinanceDashboard;
