@@ -1,32 +1,178 @@
 import React, { useState } from 'react';
-import { Search, Plus, User, FileText, CreditCard, MoreHorizontal, X } from 'lucide-react';
+import { Search, Plus, User, FileText, CreditCard, MoreHorizontal, X, ChevronDown, ChevronUp, Calendar, Stethoscope, Wallet, Building, Smartphone, Receipt } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
+import { useCurrency } from '../../../context/CurrencyContext';
+import { useWallet } from '../../../context/WalletContext';
 import { generatePatientId } from '../../../utils/patientIdUtils';
+import NewCaseModal from './NewCaseModal';
+import ReceiptModal from './ReceiptModal';
 
 const PatientManager = () => {
-    const { patients: allPatients, setPatients } = useData();
+    const { patients: allPatients, setPatients, cases, setCases, systemSettings, addBill } = useData();
+    const { formatCurrency } = useCurrency();
+    const { deductFromWallet, walletBalance } = useWallet();
+
     const [showRegisterModal, setShowRegisterModal] = useState(false);
+    const [showNewCaseModal, setShowNewCaseModal] = useState(false);
+    const [selectedPatient, setSelectedPatient] = useState(null);
+    const [expandedPatientId, setExpandedPatientId] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [showReceiptModal, setShowReceiptModal] = useState(false);
+    const [generatedReceipt, setGeneratedReceipt] = useState(null);
 
-    // Filter for regular patients (not walk-in)
-    const patients = allPatients.filter(p => !p.id.startsWith('W-'));
+    // Registration form state
+    const [patientCategory, setPatientCategory] = useState('OPD');
+    const [paymentMethod, setPaymentMethod] = useState('Cash');
+    const [paymentDetails, setPaymentDetails] = useState({
+        insuranceProvider: '',
+        policyNumber: '',
+        mobileMoneyNumber: '',
+        transactionRef: '',
+        cardNumber: ''
+    });
 
-    const handleRegister = (e) => {
+    const patients = allPatients
+        .filter(p => !p.id.startsWith('W-'))
+        .filter(p => {
+            if (!searchTerm) return true;
+            const search = searchTerm.toLowerCase();
+            return (
+                p.name?.toLowerCase().includes(search) ||
+                p.id?.toLowerCase().includes(search) ||
+                p.phone?.toLowerCase().includes(search)
+            );
+        });
+
+    const getPatientCases = (patientId) => {
+        return cases.filter(c => c.patientId === patientId)
+            .sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
+    };
+
+    const handleRegister = async (e) => {
         e.preventDefault();
+
+        // Validate wallet if needed
+        if (paymentMethod === 'HMS Wallet') {
+            const consultationFee = systemSettings.consultationFees[patientCategory];
+            if (walletBalance < consultationFee) {
+                alert('Insufficient wallet balance');
+                return;
+            }
+        }
+
         const formData = new FormData(e.target);
+        const patientId = generatePatientId(allPatients, 'regular');
+        const receiptId = `${systemSettings.receiptPrefix || 'REC'}-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+        const currentDate = new Date().toISOString();
+        const consultationFee = systemSettings.consultationFees[patientCategory];
+
+        // Create receipt for EMR and display
+        const newReceipt = {
+            id: receiptId,
+            patientId: patientId,
+            patientName: formData.get('fullName'),
+            patientType: patientCategory,
+            amount: consultationFee,
+            paymentMethod: paymentMethod,
+            date: currentDate,
+            issuedBy: 'Reception',
+            hospitalName: systemSettings.hospitalName || 'Central Hospital',
+            hospitalAddress: systemSettings.hospitalAddress || 'Kampala, Uganda',
+            hospitalPhone: systemSettings.hospitalPhone || '+256 700 000000'
+        };
+
+        // Create patient record
         const newPatient = {
-            id: generatePatientId(allPatients, 'regular'),
+            id: patientId,
             name: formData.get('fullName'),
             age: formData.get('age'),
             gender: formData.get('gender'),
             phone: formData.get('phone'),
+            address: formData.get('address') || 'N/A',
             type: formData.get('type'),
             insurance: formData.get('insuranceProvider') || '-',
             lastVisit: new Date().toLocaleDateString(),
-            patientCategory: 'OPD',
-            registrationDate: new Date().toISOString()
+            patientCategory: patientCategory,
+            registrationDate: currentDate,
+            consultationFeePaid: true,
+            consultationFeeAmount: consultationFee,
+            consultationFeeReceiptId: receiptId,
+            paymentMethod: paymentMethod,
+            receipts: [newReceipt] // Store receipt in EMR
         };
+
+        // Create financial record for consultation fee
+        const consultationFeeRecord = {
+            id: `FIN-${Date.now()}`,
+            patientId: patientId,
+            type: 'Consultation Fee',
+            category: patientCategory,
+            description: `${patientCategory} Consultation Fee`,
+            amount: consultationFee,
+            status: 'Paid',
+            paymentDate: currentDate,
+            paymentMethod: paymentMethod,
+            receiptId: receiptId,
+            paidAt: 'Reception'
+        };
+
+        // Process payment if wallet
+        if (paymentMethod === 'HMS Wallet') {
+            await deductFromWallet(consultationFee, `Consultation Fee - ${patientId}`);
+        }
+
+        // Add bill to system
+        addBill(consultationFeeRecord);
+
+        // Add patient
         setPatients([...allPatients, newPatient]);
+
+        // Auto-create initial case for new patient
+        const initialCase = {
+            id: `CASE-${new Date().getFullYear()}-${String(cases.length + 1).padStart(4, '0')}`,
+            patientId: newPatient.id,
+            patientName: newPatient.name,
+            status: 'Open',
+            startDate: new Date().toISOString().split('T')[0],
+            endDate: null,
+            type: patientCategory,
+            department: 'General Medicine',
+            chiefComplaint: 'Initial Registration',
+            assignedDoctorId: null
+        };
+        setCases([...cases, initialCase]);
+
+        // Reset form state
+        setPatientCategory('OPD');
+        setPaymentMethod('Cash');
+        setPaymentDetails({
+            insuranceProvider: '',
+            policyNumber: '',
+            mobileMoneyNumber: '',
+            transactionRef: '',
+            cardNumber: ''
+        });
+
+        // Show receipt modal
         setShowRegisterModal(false);
+        setGeneratedReceipt(newReceipt);
+        setShowReceiptModal(true);
+    };
+
+    const handleNewCase = (patient) => {
+        setSelectedPatient(patient);
+        setShowNewCaseModal(true);
+    };
+
+    const handleSaveCase = (newCase) => {
+        setCases([...cases, newCase]);
+        setShowNewCaseModal(false);
+        setSelectedPatient(null);
+        alert(`New case created successfully!\nCase ID: ${newCase.id}\nPatient: ${newCase.patientName}`);
+    };
+
+    const togglePatientExpand = (patientId) => {
+        setExpandedPatientId(expandedPatientId === patientId ? null : patientId);
     };
 
     return (
@@ -37,6 +183,8 @@ const PatientManager = () => {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input
                         type="text"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder="Search by Name, ID, or Phone..."
                         className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-sm"
                     />
@@ -50,68 +198,136 @@ const PatientManager = () => {
                 </button>
             </div>
 
-            {/* Patient Table */}
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                <table className="w-full text-left">
-                    <thead className="bg-slate-50 border-b border-slate-100">
-                        <tr>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Patient Info</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Contact</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Type</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Last Visit</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {patients.map((patient) => (
-                            <tr key={patient.id} className="hover:bg-slate-50 transition-colors group">
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
+            {/* Patient Cards */}
+            <div className="space-y-3">
+                {patients.map((patient) => {
+                    const patientCases = getPatientCases(patient.id);
+                    const isExpanded = expandedPatientId === patient.id;
+
+                    return (
+                        <div key={patient.id} className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden transition-all">
+                            {/* Patient Header */}
+                            <div
+                                className="p-4 hover:bg-slate-50 cursor-pointer transition-colors"
+                                onClick={() => togglePatientExpand(patient.id)}
+                            >
+                                <div className="flex justify-between items-start">
+                                    <div className="flex items-center gap-3 flex-1">
+                                        <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg">
                                             {patient.name.charAt(0)}
                                         </div>
-                                        <div>
-                                            <p className="font-bold text-slate-800">{patient.name}</p>
-                                            <p className="text-xs text-slate-500">{patient.gender}, {patient.age} yrs • {patient.id}</p>
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h3 className="font-bold text-slate-800 text-lg">{patient.name}</h3>
+                                                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-bold rounded">{patient.id}</span>
+                                                <span className={`px-2 py-0.5 text-xs font-bold rounded ${patient.type === 'Insurance' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                                                    }`}>
+                                                    {patient.type}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-4 text-sm text-slate-500">
+                                                <span>{patient.gender}, {patient.age} yrs</span>
+                                                <span>•</span>
+                                                <span>{patient.phone}</span>
+                                                <span>•</span>
+                                                <span className="flex items-center gap-1">
+                                                    <FileText size={14} />
+                                                    {patientCases.length} case{patientCases.length !== 1 ? 's' : ''}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
-                                </td>
-                                <td className="px-6 py-4 text-sm text-slate-600">{patient.phone}</td>
-                                <td className="px-6 py-4">
-                                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${patient.type === 'Insurance' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
-                                        }`}>
-                                        {patient.type}
-                                        {patient.type === 'Insurance' && ` • ${patient.insurance}`}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 text-sm text-slate-500">{patient.lastVisit}</td>
-                                <td className="px-6 py-4 text-right">
-                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button className="p-2 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-lg" title="New Case">
-                                            <FileText size={18} />
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleNewCase(patient);
+                                            }}
+                                            className="px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary-dark text-sm font-medium flex items-center gap-1.5 shadow-sm transition-colors"
+                                        >
+                                            <Plus size={14} />
+                                            New Case
                                         </button>
-                                        <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg">
-                                            <MoreHorizontal size={18} />
-                                        </button>
+                                        {isExpanded ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
                                     </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                                </div>
+                            </div>
+
+                            {/* Expanded Case History */}
+                            {isExpanded && (
+                                <div className="border-t border-slate-100 bg-slate-50 p-4">
+                                    <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                        <FileText size={16} />
+                                        Medical Case History
+                                    </h4>
+                                    {patientCases.length > 0 ? (
+                                        <div className="space-y-2">
+                                            {patientCases.map((caseItem) => (
+                                                <div key={caseItem.id} className="bg-white rounded-lg p-3 border border-slate-200">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded">
+                                                                {caseItem.id}
+                                                            </span>
+                                                            <span className={`px-2 py-0.5 text-xs font-bold rounded ${caseItem.status === 'Open' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                                                                }`}>
+                                                                {caseItem.status}
+                                                            </span>
+                                                            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-bold rounded">
+                                                                {caseItem.type}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1 text-xs text-slate-500">
+                                                            <Calendar size={12} />
+                                                            {caseItem.startDate}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-sm">
+                                                        <div className="flex items-start gap-2 mb-1">
+                                                            <Stethoscope size={14} className="text-slate-400 mt-0.5" />
+                                                            <div>
+                                                                <span className="font-medium text-slate-700">{caseItem.department}</span>
+                                                                <p className="text-slate-600 mt-0.5">{caseItem.chiefComplaint}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-6 text-slate-400">
+                                            <FileText size={32} className="mx-auto mb-2 opacity-50" />
+                                            <p className="text-sm">No cases recorded yet</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+
+                {patients.length === 0 && (
+                    <div className="text-center py-12 bg-white border border-slate-200 rounded-xl">
+                        <User size={48} className="mx-auto text-slate-300 mb-3" />
+                        <h3 className="text-slate-600 font-medium mb-1">No patients found</h3>
+                        <p className="text-slate-400 text-sm">
+                            {searchTerm ? 'Try a different search term' : 'Register your first patient to get started'}
+                        </p>
+                    </div>
+                )}
             </div>
 
             {/* Registration Modal */}
             {showRegisterModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-fade-in">
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 pt-10 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
                         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                             <h3 className="font-bold text-lg text-slate-800">Register New Patient</h3>
                             <button onClick={() => setShowRegisterModal(false)} className="text-slate-400 hover:text-slate-600">
                                 <X size={20} />
                             </button>
                         </div>
-                        <form onSubmit={handleRegister} className="p-6 space-y-6">
+                        <form onSubmit={handleRegister} className="p-6 space-y-6 overflow-y-auto">
                             {/* Patient ID Preview */}
                             <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
                                 <div className="flex items-center justify-between">
@@ -148,6 +364,24 @@ const PatientManager = () => {
                                         </select>
                                     </div>
                                 </div>
+                                <div className="space-y-2 md:col-span-2">
+                                    <label className="text-sm font-medium text-slate-700">Address</label>
+                                    <input name="address" type="text" className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" placeholder="e.g. Kampala, Uganda" />
+                                </div>
+
+                                {/* Patient Category - OPD/IPD */}
+                                <div className="space-y-2 md:col-span-2">
+                                    <label className="text-sm font-bold text-slate-700">Patient Category *</label>
+                                    <select
+                                        value={patientCategory}
+                                        onChange={(e) => setPatientCategory(e.target.value)}
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none bg-white"
+                                    >
+                                        <option value="OPD">OPD - Outpatient Department</option>
+                                        <option value="IPD">IPD - Inpatient Department</option>
+                                    </select>
+                                </div>
+
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-slate-700">Payment Type</label>
                                     <select name="type" className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none bg-white">
@@ -157,16 +391,157 @@ const PatientManager = () => {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-slate-700">Insurance Provider (Optional)</label>
-                                    <input name="insuranceProvider" type="text" className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" placeholder="e.g. Jubilee, UAP" />
+                                    <input name="insuranceProvider" type="text" className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none" placeholder="e.g. Jubilee,  UAP" />
                                 </div>
                             </div>
+
+                            {/* Consultation Fee Payment Section */}
+                            <div className="border-t border-slate-200 pt-4">
+                                <h4 className="font-bold text-slate-800 mb-4">💳 Consultation Fee Payment</h4>
+
+                                {/* Fee Display */}
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                                    <div className="flex justify-between items-center">
+                                        <div>
+                                            <p className="text-sm text-slate-600">Consultation Fee ({patientCategory})</p>
+                                            <p className="text-2xl font-bold text-primary">{formatCurrency(systemSettings.consultationFees[patientCategory])}</p>
+                                        </div>
+                                        <div className="px-3 py-1 bg-blue-600 text-white rounded-full text-xs font-bold">
+                                            Required
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Payment Method Selection */}
+                                <div className="space-y-3 mb-4">
+                                    <label className="text-sm font-bold text-slate-700">Payment Method *</label>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                        {systemSettings.paymentMethods?.map((method) => (
+                                            <button
+                                                key={method}
+                                                type="button"
+                                                onClick={() => setPaymentMethod(method)}
+                                                className={`p-3 border-2 rounded-lg transition-all text-sm font-medium ${paymentMethod === method
+                                                        ? 'border-primary bg-primary/10 text-primary'
+                                                        : 'border-slate-200 hover:border-primary/50'
+                                                    }`}
+                                            >
+                                                {method === 'Cash' && <CreditCard size={18} className="mx-auto mb-1" />}
+                                                {method === 'Card' && <CreditCard size={18} className="mx-auto mb-1" />}
+                                                {method === 'Mobile Money' && <Smartphone size={18} className="mx-auto mb-1" />}
+                                                {method === 'Insurance' && <Building size={18} className="mx-auto mb-1" />}
+                                                {method === 'HMS Wallet' && <Wallet size={18} className="mx-auto mb-1" />}
+                                                <div>{method}</div>
+                                                {method === 'HMS Wallet' && (
+                                                    <div className="text-xs mt-1 opacity-70">
+                                                        Bal: {formatCurrency(walletBalance)}
+                                                    </div>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Payment Method Specific Fields */}
+                                {paymentMethod === 'Insurance' && (
+                                    <div className="space-y-3 bg-slate-50 p-4 rounded-lg">
+                                        <div>
+                                            <label className="text-sm font-medium text-slate-700">Insurance Provider *</label>
+                                            <input
+                                                type="text"
+                                                required
+                                                value={paymentDetails.insuranceProvider}
+                                                onChange={(e) => setPaymentDetails({ ...paymentDetails, insuranceProvider: e.target.value })}
+                                                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none mt-1"
+                                                placeholder="e.g., AAR Insurance"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-slate-700">Policy Number *</label>
+                                            <input
+                                                type="text"
+                                                required
+                                                value={paymentDetails.policyNumber}
+                                                onChange={(e) => setPaymentDetails({ ...paymentDetails, policyNumber: e.target.value })}
+                                                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none mt-1"
+                                                placeholder="Policy number"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {paymentMethod === 'Mobile Money' && (
+                                    <div className="space-y-3 bg-slate-50 p-4 rounded-lg">
+                                        <div>
+                                            <label className="text-sm font-medium text-slate-700">Mobile Money Number *</label>
+                                            <input
+                                                type="tel"
+                                                required
+                                                value={paymentDetails.mobileMoneyNumber}
+                                                onChange={(e) => setPaymentDetails({ ...paymentDetails, mobileMoneyNumber: e.target.value })}
+                                                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none mt-1"
+                                                placeholder="0700123456"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {paymentMethod === 'Card' && (
+                                    <div className="space-y-3 bg-slate-50 p-4 rounded-lg">
+                                        <div>
+                                            <label className="text-sm font-medium text-slate-700">Card Number *</label>
+                                            <input
+                                                type="text"
+                                                required
+                                                value={paymentDetails.cardNumber}
+                                                onChange={(e) => setPaymentDetails({ ...paymentDetails, cardNumber: e.target.value })}
+                                                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none mt-1"
+                                                placeholder="**** **** **** ****"
+                                                maxLength="19"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {paymentMethod === 'HMS Wallet' && walletBalance < systemSettings.consultationFees[patientCategory] && (
+                                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                                        <p className="text-red-700 text-sm font-medium">
+                                            ⚠️ Insufficient wallet balance. Please top up or choose another payment method.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                                 <button type="button" onClick={() => setShowRegisterModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg font-medium">Cancel</button>
-                                <button type="submit" className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark font-medium shadow-lg shadow-primary/30">Complete Registration</button>
+                                <button
+                                    type="submit"
+                                    disabled={paymentMethod === 'HMS Wallet' && walletBalance < systemSettings.consultationFees[patientCategory]}
+                                    className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark font-medium shadow-lg shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                >
+                                    <Receipt size={18} />
+                                    Pay & Complete Registration</button>
                             </div>
                         </form>
                     </div>
                 </div>
+            )}
+
+            {/* Receipt Modal */}
+            {showReceiptModal && generatedReceipt && (
+                <ReceiptModal
+                    receipt={generatedReceipt}
+                    onClose={() => setShowReceiptModal(false)}
+                />
+            )}
+
+            {/* New Case Modal */}
+            {showNewCaseModal && selectedPatient && (
+                <NewCaseModal
+                    patient={selectedPatient}
+                    onClose={() => setShowNewCaseModal(false)}
+                    onSave={handleSaveCase}
+                />
             )}
         </div>
     );

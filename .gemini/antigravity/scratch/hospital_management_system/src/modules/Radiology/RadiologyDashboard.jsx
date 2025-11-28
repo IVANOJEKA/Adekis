@@ -2,13 +2,16 @@ import React, { useState } from 'react';
 import { X, Scan, FileImage, Clock, User, Calendar, Search, Filter, Download, Upload, MessageSquare, AlertCircle, CheckCircle, Activity, Stethoscope, Users as UsersIcon, Phone, Mail, Send, Bell } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useCurrency } from '../../context/CurrencyContext';
+import NewImagingRequestModal from './components/NewImagingRequestModal';
 
 const RadiologyDashboard = () => {
-    const { servicesData, addBill } = useData();
+    const { servicesData, addBill, patients = [] } = useData();
     const { formatCurrency } = useCurrency();
     const [activeTab, setActiveTab] = useState('orders');
     const [statusFilter, setStatusFilter] = useState('all');
     const [modalityFilter, setModalityFilter] = useState('all');
+    const [showNewRequestModal, setShowNewRequestModal] = useState(false);
+    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
     // Filter services for Radiology
     const radiologyServices = servicesData.filter(service => service.category === 'Radiology');
@@ -148,6 +151,24 @@ const RadiologyDashboard = () => {
         return priority === 'Urgent' ? 'text-red-600 font-bold' : 'text-slate-600';
     };
 
+    const showToast = (message, type = 'success') => {
+        setToast({ show: true, message, type });
+        setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+    };
+
+    const handleCreateRequest = (requestData) => {
+        const newOrder = {
+            id: `IMG-${String(imagingOrders.length + 1).padStart(3, '0')}`,
+            ...requestData,
+            date: requestData.scheduledDate,
+            time: requestData.scheduledTime
+        };
+
+        setImagingOrders([newOrder, ...imagingOrders]);
+        setShowNewRequestModal(false);
+        showToast(`Imaging request ${newOrder.id} created successfully!`, 'success');
+    };
+
     return (
         <div className="space-y-6 animate-fade-in pb-10">
             {/* Header */}
@@ -157,7 +178,10 @@ const RadiologyDashboard = () => {
                     <p className="text-slate-500 text-sm mt-1">Comprehensive imaging services and diagnostics</p>
                 </div>
                 <div className="flex gap-3">
-                    <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium shadow-lg shadow-primary/30">
+                    <button
+                        onClick={() => setShowNewRequestModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium shadow-lg shadow-primary/30"
+                    >
                         <Scan size={16} />
                         New Imaging Request
                     </button>
@@ -537,6 +561,25 @@ const RadiologyDashboard = () => {
                     )}
                 </div>
             </div>
+
+            {/* Toast Notification */}
+            {toast.show && (
+                <div className={`fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-medium animate-slide-up z-50 ${toast.type === 'success' ? 'bg-emerald-500' : 'bg-red-500'
+                    }`}>
+                    {toast.message}
+                </div>
+            )}
+
+            {/* New Imaging Request Modal */}
+            {showNewRequestModal && (
+                <NewImagingRequestModal
+                    onClose={() => setShowNewRequestModal(false)}
+                    onSubmit={handleCreateRequest}
+                    patients={patients}
+                    radiologyServices={radiologyServices}
+                    formatCurrency={formatCurrency}
+                />
+            )}
         </div>
     );
 };

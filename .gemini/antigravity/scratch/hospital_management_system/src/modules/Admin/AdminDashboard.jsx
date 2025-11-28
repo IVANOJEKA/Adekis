@@ -4,6 +4,7 @@ import { useData } from '../../context/DataContext';
 import UserManagement from './components/UserManagement';
 import SecurityAudit from './components/SecurityAudit';
 import DataManagement from './components/DataManagement';
+import APIIntegrations from './components/APIIntegrations';
 
 const AdminDashboard = () => {
     const {
@@ -231,7 +232,7 @@ const AdminDashboard = () => {
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
                 {/* Tabs */}
                 <div className="flex items-center gap-1 p-2 border-b border-slate-100 bg-slate-50/50 overflow-x-auto">
-                    {['Overview', 'Users', 'Security', 'Data Management'].map((tab) => {
+                    {['Overview', 'Users', 'Security', 'Data Management', 'API Integrations'].map((tab) => {
                         const tabKey = tab.toLowerCase().replace(' ', '-');
                         const isActive = activeTab === tabKey;
                         return (
@@ -313,14 +314,17 @@ const AdminDashboard = () => {
                             </div>
 
                             {/* Integrations */}
-                            <div className="card p-6 hover:border-primary/50 transition-colors cursor-pointer group">
+                            <div
+                                onClick={() => setActiveTab('api-integrations')}
+                                className="card p-6 hover:border-primary/50 transition-colors cursor-pointer group"
+                            >
                                 <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center mb-4 group-hover:bg-purple-600 group-hover:text-white transition-colors">
                                     <Globe size={24} />
                                 </div>
-                                <h3 className="font-bold text-lg text-slate-800 mb-2">Integrations</h3>
-                                <p className="text-slate-500 text-sm mb-4">Manage API keys and external system connections.</p>
+                                <h3 className="font-bold text-lg text-slate-800 mb-2">API Integrations</h3>
+                                <p className="text-slate-500 text-sm mb-4">Manage payment gateways, SMS providers, and email services.</p>
                                 <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
-                                    <span className="px-2 py-1 bg-slate-100 rounded">3 Active</span>
+                                    <span className="px-2 py-1 bg-slate-100 rounded">Payments • SMS • Email</span>
                                 </div>
                             </div>
 
@@ -385,6 +389,11 @@ const AdminDashboard = () => {
                             setBackupHistory={setBackupHistory}
                             showToast={showToast}
                         />
+                    )}
+
+                    {/* API Integrations Tab */}
+                    {activeTab === 'api-integrations' && (
+                        <APIIntegrations />
                     )}
                 </div>
             </div>

@@ -47,6 +47,10 @@ const DoctorDashboard = () => {
         notes: ''
     });
     const [diagnosisSearch, setDiagnosisSearch] = useState('');
+    const [showPatientSelector, setShowPatientSelector] = useState(false);
+    const [triggerNewPrescription, setTriggerNewPrescription] = useState(0);
+    const [patientSearch, setPatientSearch] = useState('');
+
     const [showConsultationForm, setShowConsultationForm] = useState(false);
     const [consultationPatientId, setConsultationPatientId] = useState(null);
 
@@ -128,6 +132,20 @@ const DoctorDashboard = () => {
         setShowConsultationForm(true);
     };
 
+    const handleQuickConsultation = () => {
+        setShowPatientSelector(true);
+    };
+
+    const handleNewPrescription = () => {
+        setActiveTab('prescriptions');
+        setTriggerNewPrescription(prev => prev + 1);
+    };
+
+    const handlePatientSelect = (patient) => {
+        setShowPatientSelector(false);
+        handleOpenConsultationForm(patient.id);
+    };
+
     return (
         <div className="space-y-6 animate-fade-in pb-10">
             {/* Header */}
@@ -137,11 +155,17 @@ const DoctorDashboard = () => {
                     <p className="text-slate-500 text-sm mt-1">Manage patients, appointments, and prescriptions</p>
                 </div>
                 <div className="flex gap-3">
-                    <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium shadow-lg shadow-primary/30">
+                    <button
+                        onClick={handleQuickConsultation}
+                        className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium shadow-lg shadow-primary/30"
+                    >
                         <Calendar size={16} />
                         Quick Consultation
                     </button>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors text-sm font-medium">
+                    <button
+                        onClick={handleNewPrescription}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors text-sm font-medium"
+                    >
                         <FileText size={16} />
                         New Prescription
                     </button>
@@ -515,10 +539,12 @@ const DoctorDashboard = () => {
                     {activeTab === 'prescriptions' && (
                         <div className="p-4">
                             <ErrorBoundary>
-                                <PrescriptionManager />
+                                <PrescriptionManager triggerNewPrescription={triggerNewPrescription} />
                             </ErrorBoundary>
                         </div>
                     )}
+
+                    {/* ... other tabs ... */}
 
                     {/* Consultations Tab */}
                     {activeTab === 'consultations' && (
@@ -607,6 +633,65 @@ const DoctorDashboard = () => {
                     )}
                 </div>
             </div>
+
+            {/* Patient Selector Modal for Quick Consultation */}
+            {showPatientSelector && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h2 className="text-xl font-bold text-slate-800">Start Quick Consultation</h2>
+                            <button onClick={() => setShowPatientSelector(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                                <X size={20} className="text-slate-500" />
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <div className="mb-4 relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                <input
+                                    type="text"
+                                    placeholder="Search patient by name or ID..."
+                                    value={patientSearch}
+                                    onChange={(e) => setPatientSearch(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="max-h-[300px] overflow-y-auto space-y-2">
+                                {patients
+                                    .filter(p => p.name.toLowerCase().includes(patientSearch.toLowerCase()) || p.id.toLowerCase().includes(patientSearch.toLowerCase()))
+                                    .map(patient => (
+                                        <button
+                                            key={patient.id}
+                                            onClick={() => handlePatientSelect(patient)}
+                                            className="w-full flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl border border-transparent hover:border-slate-200 transition-all group text-left"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
+                                                    {patient.name.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-slate-800 group-hover:text-primary transition-colors">{patient.name}</p>
+                                                    <p className="text-xs text-slate-500">{patient.id} • {patient.age}y • {patient.gender}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${getCategoryColor(patient.patientCategory || 'OPD')}`}>
+                                                    {patient.patientCategory || 'OPD'}
+                                                </span>
+                                            </div>
+                                        </button>
+                                    ))}
+                                {patients.filter(p => p.name.toLowerCase().includes(patientSearch.toLowerCase()) || p.id.toLowerCase().includes(patientSearch.toLowerCase())).length === 0 && (
+                                    <div className="text-center py-8 text-slate-400">
+                                        <Users size={32} className="mx-auto mb-2 opacity-20" />
+                                        <p>No patients found</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Medical Consultation Form Modal */}
             {showConsultationForm && consultationPatientId && (

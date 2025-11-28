@@ -15,7 +15,9 @@ const PharmacyDashboard = () => {
         getDataCounts,
         queueEntries,
         setQueueEntries,
-        addBill
+        addBill,
+        suppliers = [],
+        setSuppliers
     } = useData();
     const [activeTab, setActiveTab] = useState('queue');
     const [cart, setCart] = useState([]);
@@ -26,6 +28,14 @@ const PharmacyDashboard = () => {
     const [messageText, setMessageText] = useState('');
     const [showMedicineModal, setShowMedicineModal] = useState(false);
     const [editingMedicine, setEditingMedicine] = useState(null);
+    const [showSupplierModal, setShowSupplierModal] = useState(false);
+    const [supplierForm, setSupplierForm] = useState({
+        name: '',
+        contact: '',
+        email: '',
+        address: '',
+        status: 'Active'
+    });
     const [medicineForm, setMedicineForm] = useState({
         name: '',
         category: '',
@@ -115,7 +125,7 @@ const PharmacyDashboard = () => {
         const paidAmount = parseFloat(amountReceived) || parseFloat(paymentAmount);
 
         if (!paidAmount || paidAmount < paymentAmount) {
-            alert('Please enter a valid payment amount');
+            console.log('Please enter a valid payment amount');
             return;
         }
 
@@ -189,7 +199,7 @@ const PharmacyDashboard = () => {
         setPaymentPrescription(null);
 
         const change = paidAmount - paymentAmount;
-        alert(`Payment processed successfully!${change > 0 ? `\nChange: UGX ${change.toLocaleString()}` : ''}\n\nPrescription dispensed and inventory updated.`);
+        console.log(`Payment processed successfully!${change > 0 ? `\nChange: UGX ${change.toLocaleString()}` : ''}\n\nPrescription dispensed and inventory updated.`);
     };
 
     // Medicine Management Handlers
@@ -279,7 +289,27 @@ const PharmacyDashboard = () => {
         }
 
         setShowMedicineModal(false);
-        setEditingMedicine(null);
+    };
+
+    const handleSaveSupplier = (e) => {
+        e.preventDefault();
+
+        const newSupplier = {
+            id: `SUP-${String(suppliers.length + 1).padStart(3, '0')}`,
+            ...supplierForm,
+            products: 0,
+            orders: 0
+        };
+
+        setSuppliers([...suppliers, newSupplier]);
+        setShowSupplierModal(false);
+        setSupplierForm({
+            name: '',
+            contact: '',
+            email: '',
+            address: '',
+            status: 'Active'
+        });
     };
 
     const handleDeleteMedicine = (medicineId) => {
@@ -779,30 +809,43 @@ const PharmacyDashboard = () => {
                             <div className="space-y-4">
                                 <div className="flex justify-between items-center">
                                     <h2 className="text-lg font-bold text-slate-800">Suppliers</h2>
-                                    <button className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark text-sm font-medium">
+                                    <button
+                                        onClick={() => setShowSupplierModal(true)}
+                                        className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark text-sm font-medium"
+                                    >
                                         Add Supplier
                                     </button>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {['PharmaCorp', 'MediSupply', 'HealthCare Ltd'].map((supplier, index) => (
-                                        <div key={index} className="border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow">
+                                    {suppliers.map((supplier) => (
+                                        <div key={supplier.id} className="border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow">
                                             <div className="flex items-center gap-3 mb-4">
                                                 <div className="p-3 bg-primary/10 rounded-lg">
                                                     <Building2 size={24} className="text-primary" />
                                                 </div>
                                                 <div>
-                                                    <h3 className="font-bold text-slate-800">{supplier}</h3>
-                                                    <p className="text-xs text-slate-500">Active Supplier</p>
+                                                    <h3 className="font-bold text-slate-800">{supplier.name}</h3>
+                                                    <p className="text-xs text-slate-500">{supplier.status} Supplier</p>
                                                 </div>
                                             </div>
                                             <div className="grid grid-cols-2 gap-3 text-sm">
                                                 <div>
                                                     <p className="text-slate-500 text-xs">Products</p>
-                                                    <p className="font-bold text-slate-700">{Math.floor(Math.random() * 50) + 10}</p>
+                                                    <p className="font-bold text-slate-700">{supplier.products}</p>
                                                 </div>
                                                 <div>
                                                     <p className="text-slate-500 text-xs">Orders</p>
-                                                    <p className="font-bold text-slate-700">{Math.floor(Math.random() * 20) + 5}</p>
+                                                    <p className="font-bold text-slate-700">{supplier.orders}</p>
+                                                </div>
+                                            </div>
+                                            <div className="mt-4 space-y-2">
+                                                <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                    <User size={14} />
+                                                    {supplier.contact}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                    <MessageSquare size={14} />
+                                                    {supplier.email}
                                                 </div>
                                             </div>
                                             <button className="w-full mt-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg font-medium text-sm">
@@ -982,7 +1025,7 @@ const PharmacyDashboard = () => {
                                         onClick={() => {
                                             if (confirm('Restore initial sample data? This will replace all current data.')) {
                                                 restoreInitialData('all');
-                                                alert('Sample data restored successfully!');
+                                                console.log('Sample data restored successfully!');
                                                 window.location.reload();
                                             }
                                         }}
@@ -1390,6 +1433,96 @@ const PharmacyDashboard = () => {
                 </div>
             )}
 
+            {/* Add Supplier Modal */}
+            {showSupplierModal && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+                        <div className="bg-primary px-6 py-4 rounded-t-2xl flex justify-between items-center">
+                            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                <Building2 size={24} />
+                                Add New Supplier
+                            </h2>
+                            <button
+                                onClick={() => setShowSupplierModal(false)}
+                                className="text-white/80 hover:text-white transition-colors"
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveSupplier} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Supplier Name</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={supplierForm.name}
+                                    onChange={(e) => setSupplierForm({ ...supplierForm, name: e.target.value })}
+                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                                    placeholder="e.g. PharmaCorp Ltd"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Contact Person</label>
+                                <div className="relative">
+                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                    <input
+                                        type="text"
+                                        required
+                                        value={supplierForm.contact}
+                                        onChange={(e) => setSupplierForm({ ...supplierForm, contact: e.target.value })}
+                                        className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                                        placeholder="Contact person name"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+                                <div className="relative">
+                                    <MessageSquare className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                    <input
+                                        type="email"
+                                        required
+                                        value={supplierForm.email}
+                                        onChange={(e) => setSupplierForm({ ...supplierForm, email: e.target.value })}
+                                        className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                                        placeholder="email@example.com"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>
+                                <textarea
+                                    value={supplierForm.address}
+                                    onChange={(e) => setSupplierForm({ ...supplierForm, address: e.target.value })}
+                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none resize-none h-24"
+                                    placeholder="Supplier address..."
+                                />
+                            </div>
+
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowSupplierModal(false)}
+                                    className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark font-bold shadow-lg shadow-primary/30"
+                                >
+                                    Save Supplier
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             {/* Reset Data Confirmation Modal */}
             {showResetModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
@@ -1448,10 +1581,10 @@ const PharmacyDashboard = () => {
                                                 'Pharmacy Admin'
                                             );
                                             setShowResetModal(false);
-                                            alert('All data has been reset successfully!');
+                                            console.log('All data has been reset successfully!');
                                             window.location.reload();
                                         } else {
-                                            alert('Please type RESET exactly to confirm.');
+                                            console.log('Please type RESET exactly to confirm.');
                                         }
                                     }}
                                     className="flex-1 px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold"

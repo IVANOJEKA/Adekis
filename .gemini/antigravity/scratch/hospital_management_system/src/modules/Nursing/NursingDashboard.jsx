@@ -10,6 +10,7 @@ import NursingNoteModal from './components/NursingNoteModal';
 import CarePlanModal from './components/CarePlanModal';
 import HandoverModal from './components/HandoverModal';
 import PatientDetailsModal from './components/PatientDetailsModal';
+import HomeCareDashboard from './components/HomeCareDashboard';
 
 const NursingDashboard = () => {
     const {
@@ -49,22 +50,22 @@ const NursingDashboard = () => {
     // Handler functions
     const handleSaveVitals = (vitalsRecord) => {
         setVitalSigns([...vitalSigns, vitalsRecord]);
-        alert('Vitals recorded successfully!');
+        console.log('Vitals recorded successfully!');
     };
 
     const handleSaveNote = (noteRecord) => {
         setNursingNotes([...nursingNotes, noteRecord]);
-        alert('Note saved successfully!');
+        console.log('Note saved successfully!');
     };
 
     const handleSaveCarePlan = (carePlan) => {
         setCarePlans([...carePlans, carePlan]);
-        alert('Care plan created successfully!');
+        console.log('Care plan created successfully!');
     };
 
     const handleSaveHandover = (report) => {
         setHandoverReports([report, ...handoverReports]);
-        alert('Handover report created successfully!');
+        console.log('Handover report created successfully!');
     };
 
     const handleToggleTask = (taskId) => {
@@ -87,23 +88,24 @@ const NursingDashboard = () => {
             status: 'Administered'
         };
         setMedicationLogs([newLog, ...medicationLogs]);
-        alert(`Administered ${medName}`);
+        console.log(`Administered ${medName}`);
     };
 
     // Get admitted patients with their bed and ward info
     const admittedPatients = useMemo(() => {
+        if (!admissions || !patients) return [];
         return admissions
             .filter(adm => adm.status === 'Admitted')
             .map(adm => {
                 const patient = patients.find(p => p.id === adm.patientId);
                 if (!patient) return null;
 
-                const bed = beds.find(b => b.id === adm.bedId);
-                const ward = wards.find(w => w.id === adm.wardId);
+                const bed = beds?.find(b => b.id === adm.bedId);
+                const ward = wards?.find(w => w.id === adm.wardId);
                 const latestVitals = vitalSigns
-                    .filter(v => v.patientId === adm.patientId)
+                    ?.filter(v => v.patientId === adm.patientId)
                     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
-                const patientCarePlans = carePlans.filter(cp => cp.patientId === adm.patientId && cp.status === 'Active');
+                const patientCarePlans = carePlans?.filter(cp => cp.patientId === adm.patientId && cp.status === 'Active') || [];
 
                 return {
                     ...patient,
@@ -243,7 +245,8 @@ const NursingDashboard = () => {
                             { id: 'notes', label: 'Notes', icon: FileText },
                             { id: 'careplans', label: 'Care Plans', icon: Target },
                             { id: 'handover', label: 'Handover', icon: ClipboardList },
-                            { id: 'tasks', label: 'Tasks', icon: Clock }
+                            { id: 'tasks', label: 'Tasks', icon: Clock },
+                            { id: 'homecare', label: 'Home Care', icon: BedDouble }
                         ].map((tab) => (
                             <button
                                 key={tab.id}
@@ -500,7 +503,7 @@ const NursingDashboard = () => {
                                                                         o.id === order.id ? { ...o, status: 'Completed' } : o
                                                                     );
                                                                     setLabOrders(updatedOrders);
-                                                                    alert('Order marked as completed');
+                                                                    console.log('Order marked as completed');
                                                                 }}
                                                                 className="btn btn-primary btn-sm"
                                                             >
@@ -717,6 +720,13 @@ const NursingDashboard = () => {
                                     )}
                                 </div>
                             </div>
+                        )
+                    }
+
+                    {/* Home Care Tab */}
+                    {
+                        activeTab === 'homecare' && (
+                            <HomeCareDashboard />
                         )
                     }
                 </div >

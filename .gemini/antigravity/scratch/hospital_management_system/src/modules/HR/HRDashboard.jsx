@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { Users, UserPlus, Briefcase, Clock, CalendarCheck, Award, DollarSign, Search, Filter, Calendar, TrendingUp, FileText, Target, CheckSquare, Star } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import EnhancedAttendance from './components/EnhancedAttendance';
+import PayrollDashboard from './components/PayrollDashboard';
+import AddEmployeeModal from './components/AddEmployeeModal';
+import EmployeeProfileModal from './components/EmployeeProfileModal';
 
 const HRDashboard = () => {
     const {
@@ -37,6 +40,28 @@ const HRDashboard = () => {
     const [activeTab, setActiveTab] = useState('overview');
     const [searchQuery, setSearchQuery] = useState('');
     const [filterDepartment, setFilterDepartment] = useState('all');
+    const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
+    const [showEmployeeProfileModal, setShowEmployeeProfileModal] = useState(false);
+    const [selectedEmployee, setSelectedEmployee] = useState(null);
+
+    // Handlers
+    const handleAddEmployee = (newEmployee) => {
+        setEmployees([newEmployee, ...employees]);
+        setShowAddEmployeeModal(false);
+    };
+
+    const handleUpdateEmployee = (updatedEmployee) => {
+        setEmployees(employees.map(emp => emp.id === updatedEmployee.id ? updatedEmployee : emp));
+        setSelectedEmployee(updatedEmployee);
+    };
+
+    const handleDeleteEmployee = (employeeId) => {
+        if (window.confirm('Are you sure you want to delete this employee?')) {
+            setEmployees(employees.filter(emp => emp.id !== employeeId));
+            setShowEmployeeProfileModal(false);
+            setSelectedEmployee(null);
+        }
+    };
 
     // Calculate stats
     const totalStaff = employees?.length || 0;
@@ -86,7 +111,10 @@ const HRDashboard = () => {
                     <h1 className="text-2xl font-bold text-slate-800">Human Resources Management</h1>
                     <p className="text-slate-500">Comprehensive HRIS system - Staff, payroll, benefits, performance & analytics</p>
                 </div>
-                <button className="btn btn-primary gap-2">
+                <button
+                    onClick={() => setShowAddEmployeeModal(true)}
+                    className="btn btn-primary gap-2"
+                >
                     <UserPlus size={20} />
                     Add Employee
                 </button>
@@ -331,7 +359,13 @@ const HRDashboard = () => {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <button className="text-primary font-medium text-xs hover:underline">
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedEmployee(emp);
+                                                        setShowEmployeeProfileModal(true);
+                                                    }}
+                                                    className="text-primary font-medium text-xs hover:underline"
+                                                >
                                                     View Profile
                                                 </button>
                                             </td>
@@ -395,49 +429,10 @@ const HRDashboard = () => {
                 )}
 
 
+
                 {/* Payroll Tab */}
                 {activeTab === 'payroll' && (
-                    <div className="card">
-                        <div className="p-4 border-b border-slate-100 flex justify-between items-center">
-                            <h3 className="font-bold text-slate-800">Payroll History</h3>
-                            <button className="btn btn-primary btn-sm gap-2">
-                                <DollarSign size={16} />
-                                Process Payroll
-                            </button>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-100">
-                                    <tr>
-                                        <th className="px-6 py-3">Employee</th>
-                                        <th className="px-6 py-3">Month</th>
-                                        <th className="px-6 py-3">Basic Salary</th>
-                                        <th className="px-6 py-3">Allowances</th>
-                                        <th className="px-6 py-3">Deductions</th>
-                                        <th className="px-6 py-3">Net Salary</th>
-                                        <th className="px-6 py-3">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {payroll?.map(pay => (
-                                        <tr key={pay.id} className="hover:bg-slate-50">
-                                            <td className="px-6 py-4 font-medium text-slate-800">{pay.employeeName}</td>
-                                            <td className="px-6 py-4 text-slate-600">{pay.month}</td>
-                                            <td className="px-6 py-4 text-slate-600">UGX {pay.basicSalary.toLocaleString()}</td>
-                                            <td className="px-6 py-4 text-green-600">+{pay.allowances.toLocaleString()}</td>
-                                            <td className="px-6 py-4 text-red-600">-{pay.deductions.toLocaleString()}</td>
-                                            <td className="px-6 py-4 font-bold text-slate-800">UGX {pay.netSalary.toLocaleString()}</td>
-                                            <td className="px-6 py-4">
-                                                <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded">
-                                                    {pay.status}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    <PayrollDashboard />
                 )}
 
                 {/* Shifts Tab */}
@@ -1003,6 +998,31 @@ const HRDashboard = () => {
                     </div>
                 )}
             </div>
+
+            {/* Modals */}
+            {showAddEmployeeModal && (
+                <AddEmployeeModal
+                    show={true}
+                    employees={employees}
+                    departments={departments}
+                    onClose={() => setShowAddEmployeeModal(false)}
+                    onAdd={handleAddEmployee}
+                />
+            )}
+
+            {showEmployeeProfileModal && selectedEmployee && (
+                <EmployeeProfileModal
+                    show={true}
+                    employee={selectedEmployee}
+                    departments={departments}
+                    onClose={() => {
+                        setShowEmployeeProfileModal(false);
+                        setSelectedEmployee(null);
+                    }}
+                    onUpdate={handleUpdateEmployee}
+                    onDelete={handleDeleteEmployee}
+                />
+            )}
         </div>
     );
 };

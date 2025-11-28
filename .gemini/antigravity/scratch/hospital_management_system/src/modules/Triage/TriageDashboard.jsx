@@ -75,6 +75,12 @@ const TriageDashboard = () => {
             return;
         }
 
+        // Check for consultation fee payment
+        if (!patient.consultationFeePaid) {
+            alert('⚠️ Consultation Fee NOT Paid!\n\nPatient must pay the consultation fee at Reception before proceeding to Triage.');
+            return;
+        }
+
         const newTriage = {
             id: `T-${String(triageQueue.length + 1).padStart(3, '0')}`,
             patientId: triageFormData.patientId,
@@ -352,7 +358,9 @@ const TriageDashboard = () => {
                                     >
                                         <option value="">Choose a patient...</option>
                                         {patients.map(p => (
-                                            <option key={p.id} value={p.id}>{p.name} ({p.id})</option>
+                                            <option key={p.id} value={p.id} className={!p.consultationFeePaid ? 'text-red-500' : 'text-slate-800'}>
+                                                {p.name} ({p.id}) {!p.consultationFeePaid ? '(Unpaid)' : '✅'}
+                                            </option>
                                         ))}
                                     </select>
                                 </div>

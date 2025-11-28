@@ -2,15 +2,22 @@ import React, { useState, useMemo } from 'react';
 import { Bed, User, CheckCircle, AlertCircle, Clock, Building2, Heart, Baby, Users, Stethoscope, Plus, X, ArrowRightLeft, DollarSign } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useCurrency } from '../../context/CurrencyContext';
+import PatientTreatmentDetailsModal from './components/PatientTreatmentDetailsModal';
+import DischargeSummaryModal from './components/DischargeSummaryModal';
 
 const BedManagementDashboard = () => {
-    const { wards, beds, admissions, patients, setAdmissions, setBeds, addBill } = useData();
+    const { wards, beds, admissions, patients, setPatients, setAdmissions, setBeds, addBill, financialRecords: bills, users, prescriptions, medicationLogs, setMedicationLogs, systemSettings } = useData();
+    const doctors = users?.filter(u => u.role === 'Doctor') || [];
     const { formatCurrency } = useCurrency();
-
     const [selectedWardId, setSelectedWardId] = useState(wards[0]?.id || null);
     const [showAdmitModal, setShowAdmitModal] = useState(false);
     const [showTransferModal, setShowTransferModal] = useState(false);
     const [selectedBed, setSelectedBed] = useState(null);
+    const [showPatientDetailsModal, setShowPatientDetailsModal] = useState(false);
+    const [selectedPatientAdmission, setSelectedPatientAdmission] = useState(null);
+    const [adminOverride, setAdminOverride] = useState(false);
+    const [showDischargeSummary, setShowDischargeSummary] = useState(false);
+    const [dischargedAdmission, setDischargedAdmission] = useState(null);
 
     // Get ward icon based on type
     const getWardIcon = (wardName) => {
@@ -51,10 +58,65 @@ const BedManagementDashboard = () => {
         return { daysAdmitted, accruedBill, dailyRate };
     };
 
+    // Calculate total patient bills
+    const getPatientBillSummary = (patientId) => {
+        const patientBills = bills.filter(b => b.patientId === patientId);
+        const totalBillAmount = patientBills.reduce((sum, bill) => sum + bill.amount, 0);
+        const totalPaid = patientBills
+            .filter(b => b.status === 'Paid')
+            .reduce((sum, bill) => sum + bill.amount, 0);
+        const balanceDue = totalBillAmount - totalPaid;
+
+        return { totalBillAmount, totalPaid, balanceDue, isBillFullyPaid: balanceDue <= 0 };
+    };
+
     // Handle admission
     const handleAdmit = (bedId, patientId, diagnosis, doctorId = 'U-001') => {
         const bed = beds.find(b => b.id === bedId);
         if (!bed || bed.status !== 'Available') return;
+
+        // Check if patient needs OPD → IPD upgrade
+        const patient = patients.find(p => p.id === patientId);
+        if (!patient) {
+            alert('Patient not found');
+            return;
+        }
+
+        let upgradeMessage = '';
+
+        // If patient is OPD, automatically upgrade to IPD
+        if (patient.patientCategory === 'OPD') {
+            const opdFee = systemSettings.consultationFees.OPD;
+            const ipdFee = systemSettings.consultationFees.IPD;
+            const feeDifference = ipdFee - opdFee;
+
+            // Create financial record for the upgrade fee difference
+            const upgradeFeeRecord = {
+                id: `FIN-${Date.now()}-UPG`,
+                patientId: patientId,
+                type: 'IPD Upgrade Fee',
+                category: 'IPD',
+                description: 'OPD to IPD conversion upon admission',
+                amount: feeDifference,
+                status: 'Pending',
+                paymentDate: null,
+                paymentMethod: null,
+                receiptId: null,
+                admissionId: `ADM-${Date.now()}`
+            };
+
+            // Add the upgrade fee to bills
+            addBill(upgradeFeeRecord);
+
+            // Update patient category to IPD
+            setPatients(patients.map(p =>
+                p.id === patientId
+                    ? { ...p, patientCategory: 'IPD', upgradedToIPD: true, upgradeDate: new Date().toISOString() }
+                    : p
+            ));
+
+            upgradeMessage = `\n\n✨ Patient upgraded from OPD to IPD\nAdditional Fee: ${formatCurrency(feeDifference)} (Pending)`;
+        }
 
         const newAdmission = {
             id: `ADM-${Date.now()}`,
@@ -71,6 +133,8 @@ const BedManagementDashboard = () => {
         setBeds(beds.map(b => b.id === bedId ? { ...b, status: 'Occupied', patientId } : b));
         setShowAdmitModal(false);
         setSelectedBed(null);
+
+        alert(`✅ Patient Admitted Successfully!\n\nAdmission ID: ${newAdmission.id}\nBed: ${bed.bedNumber}\nWard: ${bed.wardId}${upgradeMessage}`);
     };
 
     // Handle transfer
@@ -99,35 +163,90 @@ const BedManagementDashboard = () => {
         setSelectedBed(null);
     };
 
-    // Handle discharge
-    const handleDischarge = (admissionId) => {
+    // Handle discharge with bill validation
+    const handleDischarge = (admissionId, isAdminOverride = false) => {
         const admission = admissions.find(a => a.id === admissionId);
         if (!admission) return;
 
-        const { accruedBill } = calculateAdmissionBill(admission);
+        const { accruedBill, daysAdmitted } = calculateAdmissionBill(admission);
+        const { balanceDue, isBillFullyPaid } = getPatientBillSummary(admission.patientId);
 
-        if (window.confirm(`Discharge patient?\n\nTotal Bed Charges: ${formatCurrency(accruedBill)}\n\nThis will be added to their medical bill.`)) {
-            // Add Bill
-            if (accruedBill > 0) {
-                addBill({
-                    patientId: admission.patientId,
-                    amount: accruedBill,
-                    type: 'Admission',
-                    description: `Bed Charge: ${daysAdmitted} days in ${wards.find(w => w.id === admission.wardId)?.name}`,
-                    status: 'Pending'
-                });
+        // Check if bill is paid or admin override
+        if (!isBillFullyPaid && !isAdminOverride) {
+            const patient = patients.find(p => p.id === admission.patientId);
+            const confirmOverride = window.confirm(
+                `⚠️ DISCHARGE RESTRICTION\n\n` +
+                `Patient: ${patient?.name || 'Unknown'}\n` +
+                `Outstanding Balance: ${formatCurrency(balanceDue)}\n\n` +
+                `This patient has unpaid medical bills.\n\n` +
+                `Only an ADMINISTRATOR can approve discharge with outstanding balance.\n\n` +
+                `Are you authorized as an Administrator to override this restriction?`
+            );
+
+            if (!confirmOverride) {
+                alert('Discharge cancelled. Patient must clear outstanding bills before discharge.');
+                return;
             }
 
-            // Update admission status
-            setAdmissions(admissions.map(a =>
-                a.id === admissionId ? { ...a, status: 'Discharged', dischargeDate: new Date().toISOString() } : a
-            ));
-
-            // Free the bed
-            setBeds(beds.map(b =>
-                b.id === admission.bedId ? { ...b, status: 'Available', patientId: null } : b
-            ));
+            // Admin confirmed override
+            setAdminOverride(true);
         }
+
+        // Prepare discharge data and show discharge summary
+        const dischargeData = {
+            admission,
+            patient: patients.find(p => p.id === admission.patientId),
+            accruedBill,
+            daysAdmitted,
+            isAdminOverride: isAdminOverride || !isBillFullyPaid
+        };
+
+        // Set the data for discharge summary
+        setDischargedAdmission(dischargeData);
+        setShowDischargeSummary(true);
+        setShowPatientDetailsModal(false);
+    };
+
+    // Complete discharge after summary is reviewed
+    const completeDischarge = () => {
+        if (!dischargedAdmission) return;
+
+        const { admission, accruedBill, daysAdmitted, isAdminOverride } = dischargedAdmission;
+        const isBillFullyPaid = getPatientBillSummary(admission.patientId).isBillFullyPaid;
+
+        // Add Bed Bill
+        if (accruedBill > 0) {
+            addBill({
+                patientId: admission.patientId,
+                amount: accruedBill,
+                type: 'Admission',
+                description: `Bed Charge: ${daysAdmitted} days in ${wards.find(w => w.id === admission.wardId)?.name}${isAdminOverride ? ' (Admin Override Discharge)' : ''}`,
+                status: 'Pending'
+            });
+        }
+
+        // Update admission status
+        setAdmissions(admissions.map(a =>
+            a.id === admission.id ? {
+                ...a,
+                status: 'Discharged',
+                dischargeDate: new Date().toISOString(),
+                dischargedWithBalance: !isBillFullyPaid,
+                adminOverride: isAdminOverride
+            } : a
+        ));
+
+        // Free the bed
+        setBeds(beds.map(b =>
+            b.id === admission.bedId ? { ...b, status: 'Available', patientId: null } : b
+        ));
+
+        // Close modals and reset state
+        setShowDischargeSummary(false);
+        setDischargedAdmission(null);
+        setShowPatientDetailsModal(false);
+        setSelectedPatientAdmission(null);
+        setAdminOverride(false);
     };
 
     const getStatusColor = (status) => {
@@ -284,8 +403,18 @@ const BedManagementDashboard = () => {
                                         const StatusIcon = getStatusIcon(bed.status);
                                         const billInfo = admission ? calculateAdmissionBill(admission) : null;
 
+
                                         return (
-                                            <div key={bed.id} className={`border-2 rounded-xl p-4 transition-all hover:shadow-md ${getStatusColor(bed.status)}`}>
+                                            <div key={bed.id}
+                                                className={`border-2 rounded-xl p-4 transition-all hover:shadow-md ${getStatusColor(bed.status)} ${bed.status === 'Occupied' ? 'cursor-pointer hover:ring-2 hover:ring-blue-400' : ''}`}
+                                                onClick={() => {
+                                                    if (bed.status === 'Occupied' && admission) {
+                                                        setSelectedPatientAdmission(admission);
+                                                        setSelectedBed(bed);
+                                                        setShowPatientDetailsModal(true);
+                                                    }
+                                                }}
+                                            >
                                                 <div className="flex items-start justify-between mb-3">
                                                     <div className="flex items-center gap-2">
                                                         <Bed size={18} className="text-current" />
@@ -313,13 +442,20 @@ const BedManagementDashboard = () => {
                                                         </div>
                                                         <div className="flex gap-2 pt-2">
                                                             <button
-                                                                onClick={() => { setSelectedBed(bed); setShowTransferModal(true); }}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setSelectedBed(bed);
+                                                                    setShowTransferModal(true);
+                                                                }}
                                                                 className="flex-1 px-2 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-xs font-medium"
                                                             >
                                                                 Transfer
                                                             </button>
                                                             <button
-                                                                onClick={() => handleDischarge(admission.id)}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleDischarge(admission.id);
+                                                                }}
                                                                 className="flex-1 px-2 py-1.5 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 text-xs font-medium"
                                                             >
                                                                 Discharge
@@ -335,7 +471,11 @@ const BedManagementDashboard = () => {
                                                             </p>
                                                         </div>
                                                         <button
-                                                            onClick={() => { setSelectedBed(bed); setShowAdmitModal(true); }}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedBed(bed);
+                                                                setShowAdmitModal(true);
+                                                            }}
                                                             className="w-full px-3 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark text-xs font-medium"
                                                         >
                                                             Admit Patient
@@ -355,7 +495,10 @@ const BedManagementDashboard = () => {
                                                         <p className="font-medium text-lg">Maintenance</p>
                                                         <p className="text-xs text-amber-700">Under maintenance</p>
                                                         <button
-                                                            onClick={() => setBeds(beds.map(b => b.id === bed.id ? { ...b, status: 'Available' } : b))}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setBeds(beds.map(b => b.id === bed.id ? { ...b, status: 'Available' } : b));
+                                                            }}
                                                             className="w-full px-3 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 text-xs font-medium"
                                                         >
                                                             Mark Available
@@ -370,152 +513,223 @@ const BedManagementDashboard = () => {
                         </div>
                     )}
                 </div>
-            </div>
+            </div >
 
             {/* Admit Patient Modal */}
-            {showAdmitModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <h2 className="text-xl font-bold text-slate-800">Admit Patient</h2>
-                            <button onClick={() => { setShowAdmitModal(false); setSelectedBed(null); }} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
-                                <X size={20} className="text-slate-500" />
-                            </button>
-                        </div>
-                        <form onSubmit={(e) => {
-                            e.preventDefault();
-                            const formData = new FormData(e.target);
-                            handleAdmit(
-                                formData.get('bedId'),
-                                formData.get('patientId'),
-                                formData.get('diagnosis')
-                            );
-                        }} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Select Bed</label>
-                                <select
-                                    name="bedId"
-                                    required
-                                    defaultValue={selectedBed?.id || ''}
-                                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                >
-                                    <option value="">Choose a bed...</option>
-                                    {beds.filter(b => b.status === 'Available').map(bed => {
-                                        const ward = wards.find(w => w.id === bed.wardId);
-                                        return (
-                                            <option key={bed.id} value={bed.id}>
-                                                {bed.number} - {ward?.name} ({formatCurrency(ward?.basePrice || 0)}/day)
+            {
+                showAdmitModal && (
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                                <h2 className="text-xl font-bold text-slate-800">Admit Patient</h2>
+                                <button onClick={() => { setShowAdmitModal(false); setSelectedBed(null); }} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                                    <X size={20} className="text-slate-500" />
+                                </button>
+                            </div>
+                            <form onSubmit={(e) => {
+                                e.preventDefault();
+                                const formData = new FormData(e.target);
+                                handleAdmit(
+                                    formData.get('bedId'),
+                                    formData.get('patientId'),
+                                    formData.get('diagnosis')
+                                );
+                            }} className="p-6 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Select Bed</label>
+                                    <select
+                                        name="bedId"
+                                        required
+                                        defaultValue={selectedBed?.id || ''}
+                                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                    >
+                                        <option value="">Choose a bed...</option>
+                                        {beds.filter(b => b.status === 'Available').map(bed => {
+                                            const ward = wards.find(w => w.id === bed.wardId);
+                                            return (
+                                                <option key={bed.id} value={bed.id}>
+                                                    {bed.number} - {ward?.name} ({formatCurrency(ward?.basePrice || 0)}/day)
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Select Patient</label>
+                                    <select
+                                        name="patientId"
+                                        required
+                                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                    >
+                                        <option value="">Choose a patient...</option>
+                                        {patients.map(patient => (
+                                            <option key={patient.id} value={patient.id}>
+                                                {patient.name} ({patient.id})
                                             </option>
-                                        );
-                                    })}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Select Patient</label>
-                                <select
-                                    name="patientId"
-                                    required
-                                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                >
-                                    <option value="">Choose a patient...</option>
-                                    {patients.map(patient => (
-                                        <option key={patient.id} value={patient.id}>
-                                            {patient.name} ({patient.id})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Diagnosis / Reason</label>
-                                <textarea
-                                    name="diagnosis"
-                                    required
-                                    rows="3"
-                                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
-                                    placeholder="Enter diagnosis or reason for admission..."
-                                ></textarea>
-                            </div>
-                            <div className="flex gap-3 pt-4">
-                                <button
-                                    type="button"
-                                    onClick={() => { setShowAdmitModal(false); setSelectedBed(null); }}
-                                    className="flex-1 px-6 py-2 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="flex-1 px-6 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors shadow-lg shadow-primary/30"
-                                >
-                                    Admit Patient
-                                </button>
-                            </div>
-                        </form>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Diagnosis / Reason</label>
+                                    <textarea
+                                        name="diagnosis"
+                                        required
+                                        rows="3"
+                                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                                        placeholder="Enter diagnosis or reason for admission..."
+                                    ></textarea>
+                                </div>
+                                <div className="flex gap-3 pt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => { setShowAdmitModal(false); setSelectedBed(null); }}
+                                        className="flex-1 px-6 py-2 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="flex-1 px-6 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors shadow-lg shadow-primary/30"
+                                    >
+                                        Admit Patient
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Transfer Patient Modal */}
-            {showTransferModal && selectedBed && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <h2 className="text-xl font-bold text-slate-800">Transfer Patient</h2>
-                            <button onClick={() => { setShowTransferModal(false); setSelectedBed(null); }} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
-                                <X size={20} className="text-slate-500" />
-                            </button>
+            {
+                showTransferModal && selectedBed && (
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                                <h2 className="text-xl font-bold text-slate-800">Transfer Patient</h2>
+                                <button onClick={() => { setShowTransferModal(false); setSelectedBed(null); }} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                                    <X size={20} className="text-slate-500" />
+                                </button>
+                            </div>
+                            <form onSubmit={(e) => {
+                                e.preventDefault();
+                                const admission = admissions.find(a => a.bedId === selectedBed.id && a.status === 'Admitted');
+                                if (admission) {
+                                    handleTransfer(admission.id, e.target.newBedId.value);
+                                }
+                            }} className="p-6 space-y-4">
+                                <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                                    <p className="text-sm text-blue-600 mb-1">Current Bed</p>
+                                    <p className="font-bold text-slate-800">
+                                        {selectedBed.number} - {wards.find(w => w.id === selectedBed.wardId)?.name}
+                                    </p>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Transfer To Bed</label>
+                                    <select
+                                        name="newBedId"
+                                        required
+                                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                    >
+                                        <option value="">Choose a bed...</option>
+                                        {beds.filter(b => b.status === 'Available' && b.id !== selectedBed.id).map(bed => {
+                                            const ward = wards.find(w => w.id === bed.wardId);
+                                            return (
+                                                <option key={bed.id} value={bed.id}>
+                                                    {bed.number} - {ward?.name} ({formatCurrency(ward?.basePrice || 0)}/day)
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                </div>
+                                <div className="flex gap-3 pt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => { setShowTransferModal(false); setSelectedBed(null); }}
+                                        className="flex-1 px-6 py-2 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="flex-1 px-6 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30"
+                                    >
+                                        Transfer
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-                        <form onSubmit={(e) => {
-                            e.preventDefault();
-                            const admission = admissions.find(a => a.bedId === selectedBed.id && a.status === 'Admitted');
-                            if (admission) {
-                                handleTransfer(admission.id, e.target.newBedId.value);
-                            }
-                        }} className="p-6 space-y-4">
-                            <div className="bg-blue-50 p-4 rounded-lg mb-4">
-                                <p className="text-sm text-blue-600 mb-1">Current Bed</p>
-                                <p className="font-bold text-slate-800">
-                                    {selectedBed.number} - {wards.find(w => w.id === selectedBed.wardId)?.name}
-                                </p>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Transfer To Bed</label>
-                                <select
-                                    name="newBedId"
-                                    required
-                                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                >
-                                    <option value="">Choose a bed...</option>
-                                    {beds.filter(b => b.status === 'Available' && b.id !== selectedBed.id).map(bed => {
-                                        const ward = wards.find(w => w.id === bed.wardId);
-                                        return (
-                                            <option key={bed.id} value={bed.id}>
-                                                {bed.number} - {ward?.name} ({formatCurrency(ward?.basePrice || 0)}/day)
-                                            </option>
-                                        );
-                                    })}
-                                </select>
-                            </div>
-                            <div className="flex gap-3 pt-4">
-                                <button
-                                    type="button"
-                                    onClick={() => { setShowTransferModal(false); setSelectedBed(null); }}
-                                    className="flex-1 px-6 py-2 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="flex-1 px-6 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30"
-                                >
-                                    Transfer
-                                </button>
-                            </div>
-                        </form>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+
+            {/* Patient Treatment Details Modal */}
+            {
+                showPatientDetailsModal && selectedPatientAdmission && (
+                    <PatientTreatmentDetailsModal
+                        admission={selectedPatientAdmission}
+                        patient={patients.find(p => p.id === selectedPatientAdmission.patientId)}
+                        bed={beds.find(b => b.id === selectedPatientAdmission.bedId)}
+                        ward={wards.find(w => w.id === selectedPatientAdmission.wardId)}
+                        billInfo={calculateAdmissionBill(selectedPatientAdmission)}
+                        doctorInfo={doctors?.find(d => d.id === selectedPatientAdmission.doctorId)}
+                        prescriptions={prescriptions}
+                        medicationLogs={medicationLogs}
+                        onLogMedication={(log) => setMedicationLogs(prev => [...prev, log])}
+                        {...getPatientBillSummary(selectedPatientAdmission.patientId)}
+                        formatCurrency={formatCurrency}
+                        onClose={() => {
+                            setShowPatientDetailsModal(false);
+                            setSelectedPatientAdmission(null);
+                        }}
+                        onDischarge={() => handleDischarge(selectedPatientAdmission.id, adminOverride)}
+                        onTransfer={() => {
+                            setShowPatientDetailsModal(false);
+                            setSelectedBed(beds.find(b => b.id === selectedPatientAdmission.bedId));
+                            setShowTransferModal(true);
+                        }}
+                        canDischarge={adminOverride}
+                    />
+                )
+            }
+
+            {/* Discharge Summary Modal */}
+            {
+                showDischargeSummary && dischargedAdmission && (
+                    <DischargeSummaryModal
+                        patient={dischargedAdmission.patient}
+                        admission={dischargedAdmission.admission}
+                        bed={beds.find(b => b.id === dischargedAdmission.admission.bedId)}
+                        ward={wards.find(w => w.id === dischargedAdmission.admission.wardId)}
+                        doctor={doctors?.find(d => d.id === dischargedAdmission.admission.doctorId)}
+                        prescriptions={prescriptions.filter(p => p.patientId === dischargedAdmission.patient.id)}
+                        medicationLogs={medicationLogs.filter(m => m.admissionId === dischargedAdmission.admission.id)}
+                        vitalSigns={[]}
+                        billInfo={{
+                            ...calculateAdmissionBill(dischargedAdmission.admission),
+                            ...getPatientBillSummary(dischargedAdmission.patient.id)
+                        }}
+                        formatCurrency={formatCurrency}
+                        formatDate={(date) => {
+                            if (!date) return 'N/A';
+                            const d = new Date(date);
+                            return d.toLocaleString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+                        }}
+                        onClose={() => {
+                            setShowDischargeSummary(false);
+                            setDischargedAdmission(null);
+                        }}
+                        onCompleteDischarge={completeDischarge}
+                    />
+                )
+            }
+        </div >
     );
 };
 

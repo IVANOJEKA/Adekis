@@ -1,14 +1,86 @@
-import React, { useState } from 'react';
-import { Users, UserPlus, Edit, Search, CheckCircle, XCircle, Key } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Users, UserPlus, Edit, Search, CheckCircle, XCircle, Key, Shield, CheckSquare, Square } from 'lucide-react';
+import { useAuth } from '../../../context/AuthContext';
+
+const AVAILABLE_PERMISSIONS = [
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'reception', label: 'Reception' },
+    { id: 'doctor', label: 'Doctor' },
+    { id: 'triage', label: 'Triage' },
+    { id: 'emr', label: 'EMR' },
+    { id: 'pharmacy', label: 'Pharmacy' },
+    { id: 'laboratory', label: 'Laboratory' },
+    { id: 'pathology', label: 'Pathology' },
+    { id: 'radiology', label: 'Radiology' },
+    { id: 'bed-management', label: 'Bed Management' },
+    { id: 'nursing', label: 'Nursing' },
+    { id: 'theatre', label: 'Theatre' },
+    { id: 'maternity', label: 'Maternity' },
+    { id: 'blood-bank', label: 'Blood Bank' },
+    { id: 'ambulance', label: 'Ambulance' },
+    { id: 'finance', label: 'Finance' },
+    { id: 'insurance', label: 'Insurance' },
+    { id: 'hr', label: 'HR Management' },
+    { id: 'services', label: 'Services' },
+    { id: 'wallet', label: 'Wallet' },
+    { id: 'debt', label: 'Debt Management' },
+    { id: 'communication', label: 'Communication' },
+    { id: 'camps', label: 'Health Camps' },
+    { id: 'queue', label: 'Queue Management' },
+    { id: 'reports', label: 'Reports' },
+    { id: 'admin', label: 'Administration' },
+    { id: 'settings', label: 'Settings' },
+];
 
 const UserManagement = ({ users = [], setUsers, auditLogs = [], setAuditLogs, showToast }) => {
+    const { ROLE_PERMISSIONS } = useAuth();
     const [showUserModal, setShowUserModal] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterRole, setFilterRole] = useState('All');
+    const [selectedPermissions, setSelectedPermissions] = useState([]);
+    const [selectedRole, setSelectedRole] = useState('Doctor');
 
-    const roles = ['All', 'Doctor', 'Nurse', 'Administrator', 'Pharmacist', 'Lab Technician', 'Receptionist'];
-    const departments = ['General Medicine', 'Surgery', 'Pediatrics', 'Cardiology', 'Nursing', 'Pharmacy', 'Laboratory', 'Administration'];
+    const roles = ['All', 'Doctor', 'Nurse', 'Administrator', 'Pharmacist', 'Lab Technician', 'Receptionist', 'Radiologist', 'Finance Officer', 'HR Manager', 'Blood Bank Officer'];
+    const departments = ['General Medicine', 'Surgery', 'Pediatrics', 'Cardiology', 'Nursing', 'Pharmacy', 'Laboratory', 'Administration', 'Radiology', 'Finance', 'HR'];
+
+    // Update permissions when role changes in the modal
+    useEffect(() => {
+        if (showUserModal && !editingUser) {
+            // New user: set default permissions for the selected role
+            const defaults = ROLE_PERMISSIONS[selectedRole] || [];
+            setSelectedPermissions(defaults.includes('*') ? AVAILABLE_PERMISSIONS.map(p => p.id) : defaults);
+        } else if (showUserModal && editingUser) {
+            // Editing user: set their existing permissions
+            // If they have no explicit permissions, fall back to role defaults
+            const userPerms = editingUser.permissions || ROLE_PERMISSIONS[editingUser.role] || [];
+            setSelectedPermissions(userPerms.includes('*') ? AVAILABLE_PERMISSIONS.map(p => p.id) : userPerms);
+        }
+    }, [selectedRole, showUserModal, editingUser, ROLE_PERMISSIONS]);
+
+    const handleRoleChange = (e) => {
+        const newRole = e.target.value;
+        setSelectedRole(newRole);
+        // Auto-update permissions to defaults for the new role
+        const defaults = ROLE_PERMISSIONS[newRole] || [];
+        setSelectedPermissions(defaults.includes('*') ? AVAILABLE_PERMISSIONS.map(p => p.id) : defaults);
+    };
+
+    const togglePermission = (permId) => {
+        if (selectedPermissions.includes(permId)) {
+            setSelectedPermissions(selectedPermissions.filter(id => id !== permId));
+        } else {
+            setSelectedPermissions([...selectedPermissions, permId]);
+        }
+    };
+
+    const toggleAllPermissions = () => {
+        if (selectedPermissions.length === AVAILABLE_PERMISSIONS.length) {
+            setSelectedPermissions([]);
+        } else {
+            setSelectedPermissions(AVAILABLE_PERMISSIONS.map(p => p.id));
+        }
+    };
 
     const logAudit = (action, target) => {
         const newLog = {
@@ -34,7 +106,8 @@ const UserManagement = ({ users = [], setUsers, auditLogs = [], setAuditLogs, sh
             status: 'Active',
             email: formData.get('email'),
             phone: formData.get('phone'),
-            lastLogin: new Date().toISOString()
+            lastLogin: null,
+            permissions: selectedPermissions
         };
         setUsers([...users, newUser]);
         setShowUserModal(false);
@@ -53,7 +126,8 @@ const UserManagement = ({ users = [], setUsers, auditLogs = [], setAuditLogs, sh
                     role: formData.get('role'),
                     department: formData.get('department'),
                     email: formData.get('email'),
-                    phone: formData.get('phone')
+                    phone: formData.get('phone'),
+                    permissions: selectedPermissions
                 }
                 : u
         );
@@ -75,6 +149,7 @@ const UserManagement = ({ users = [], setUsers, auditLogs = [], setAuditLogs, sh
 
     const openEditModal = (user) => {
         setEditingUser(user);
+        setSelectedRole(user.role);
         setShowUserModal(true);
     };
 
@@ -96,6 +171,7 @@ const UserManagement = ({ users = [], setUsers, auditLogs = [], setAuditLogs, sh
                 <button
                     onClick={() => {
                         setEditingUser(null);
+                        setSelectedRole('Doctor'); // Default
                         setShowUserModal(true);
                     }}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2 shadow-lg shadow-blue-200"
@@ -137,7 +213,7 @@ const UserManagement = ({ users = [], setUsers, auditLogs = [], setAuditLogs, sh
                             <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase">Role</th>
                             <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase">Department</th>
                             <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase">Status</th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase">Last Login</th>
+                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase">Permissions</th>
                             <th className="px-6 py-3 text-right text-xs font-bold text-slate-600 uppercase">Actions</th>
                         </tr>
                     </thead>
@@ -173,7 +249,14 @@ const UserManagement = ({ users = [], setUsers, auditLogs = [], setAuditLogs, sh
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-slate-600 text-sm">
-                                        {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}
+                                        <div className="flex items-center gap-1" title={user.permissions?.join(', ') || 'Default Role Permissions'}>
+                                            <Shield size={14} className="text-slate-400" />
+                                            <span>
+                                                {user.permissions?.includes('*')
+                                                    ? 'Full Access'
+                                                    : `${user.permissions?.length || 0} Modules`}
+                                            </span>
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex justify-end gap-2">
@@ -205,58 +288,45 @@ const UserManagement = ({ users = [], setUsers, auditLogs = [], setAuditLogs, sh
 
             {/* User Modal */}
             {showUserModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl my-8">
                         <div className="p-6 border-b border-slate-200">
                             <h3 className="text-xl font-bold text-slate-800">
-                                {editingUser ? 'Edit User' : 'Add New User'}
+                                {editingUser ? 'Edit User & Permissions' : 'Add New User'}
                             </h3>
                         </div>
-                        <form onSubmit={editingUser ? handleEditUser : handleAddUser} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Full Name</label>
-                                <input
-                                    name="name"
-                                    required
-                                    defaultValue={editingUser?.name}
-                                    placeholder="John Doe"
-                                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Email</label>
-                                <input
-                                    name="email"
-                                    type="email"
-                                    required
-                                    defaultValue={editingUser?.email}
-                                    placeholder="john.doe@hospital.com"
-                                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Phone</label>
-                                <input
-                                    name="phone"
-                                    required
-                                    defaultValue={editingUser?.phone}
-                                    placeholder="0700123456"
-                                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
+                        <form onSubmit={editingUser ? handleEditUser : handleAddUser} className="p-6 space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Role</label>
-                                    <select
-                                        name="role"
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Full Name</label>
+                                    <input
+                                        name="name"
                                         required
-                                        defaultValue={editingUser?.role || 'Doctor'}
+                                        defaultValue={editingUser?.name}
+                                        placeholder="John Doe"
                                         className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                    >
-                                        {roles.filter(r => r !== 'All').map(role => (
-                                            <option key={role} value={role}>{role}</option>
-                                        ))}
-                                    </select>
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Email</label>
+                                    <input
+                                        name="email"
+                                        type="email"
+                                        required
+                                        defaultValue={editingUser?.email}
+                                        placeholder="john.doe@hospital.com"
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Phone</label>
+                                    <input
+                                        name="phone"
+                                        required
+                                        defaultValue={editingUser?.phone}
+                                        placeholder="0700123456"
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-bold text-slate-700 mb-2">Department</label>
@@ -271,19 +341,73 @@ const UserManagement = ({ users = [], setUsers, auditLogs = [], setAuditLogs, sh
                                         ))}
                                     </select>
                                 </div>
-                            </div>
-                            {!editingUser && (
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Password</label>
-                                    <input
-                                        name="password"
-                                        type="password"
-                                        required={!editingUser}
-                                        placeholder="Minimum 8 characters"
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Role</label>
+                                    <select
+                                        name="role"
+                                        required
+                                        value={selectedRole}
+                                        onChange={handleRoleChange}
                                         className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                    />
+                                    >
+                                        {roles.filter(r => r !== 'All').map(role => (
+                                            <option key={role} value={role}>{role}</option>
+                                        ))}
+                                    </select>
                                 </div>
-                            )}
+                                {!editingUser && (
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Password</label>
+                                        <input
+                                            name="password"
+                                            type="password"
+                                            required={!editingUser}
+                                            placeholder="Minimum 8 characters"
+                                            className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Permissions Section */}
+                            <div className="border-t border-slate-200 pt-4">
+                                <div className="flex justify-between items-center mb-3">
+                                    <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                        <Shield size={16} className="text-blue-600" />
+                                        Module Permissions
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={toggleAllPermissions}
+                                        className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                                    >
+                                        {selectedPermissions.length === AVAILABLE_PERMISSIONS.length ? 'Deselect All' : 'Select All'}
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-60 overflow-y-auto p-2 border border-slate-100 rounded-lg bg-slate-50">
+                                    {AVAILABLE_PERMISSIONS.map(perm => (
+                                        <div
+                                            key={perm.id}
+                                            onClick={() => togglePermission(perm.id)}
+                                            className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${selectedPermissions.includes(perm.id)
+                                                    ? 'bg-blue-100 text-blue-800'
+                                                    : 'hover:bg-slate-200 text-slate-600'
+                                                }`}
+                                        >
+                                            {selectedPermissions.includes(perm.id) ? (
+                                                <CheckSquare size={16} className="text-blue-600 flex-shrink-0" />
+                                            ) : (
+                                                <Square size={16} className="text-slate-400 flex-shrink-0" />
+                                            )}
+                                            <span className="text-sm font-medium">{perm.label}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <p className="text-xs text-slate-500 mt-2">
+                                    * Permissions are automatically set based on the selected Role, but can be customized here.
+                                </p>
+                            </div>
+
                             <div className="flex gap-3 pt-4">
                                 <button
                                     type="button"
@@ -299,7 +423,7 @@ const UserManagement = ({ users = [], setUsers, auditLogs = [], setAuditLogs, sh
                                     type="submit"
                                     className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold"
                                 >
-                                    {editingUser ? 'Update User' : 'Add User'}
+                                    {editingUser ? 'Update User & Permissions' : 'Add User'}
                                 </button>
                             </div>
                         </form>

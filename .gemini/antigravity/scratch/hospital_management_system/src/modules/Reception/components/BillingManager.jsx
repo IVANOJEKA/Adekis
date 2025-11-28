@@ -3,6 +3,7 @@ import { CreditCard, CheckCircle, Clock, DollarSign, Printer, Filter, Wallet, Sh
 import { useWallet } from '../../../context/WalletContext';
 import { useData } from '../../../context/DataContext';
 import { useCurrency } from '../../../context/CurrencyContext';
+import CardPaymentModal from '../../../components/CardPaymentModal';
 
 const BillingManager = () => {
     const { financialRecords, updateBillStatus } = useData();
@@ -13,6 +14,7 @@ const BillingManager = () => {
     const [statusFilter, setStatusFilter] = useState('Pending');
     const [selectedBill, setSelectedBill] = useState(null);
     const [paymentMethod, setPaymentMethod] = useState('cash');
+    const [showCardModal, setShowCardModal] = useState(false);
 
     // Filter bills based on search and status
     const filteredBills = useMemo(() => {
@@ -44,8 +46,12 @@ const BillingManager = () => {
                 } else {
                     alert(result.message);
                 }
+            } else if (paymentMethod === 'card') {
+                // Open card payment modal
+                setShowCardModal(true);
+                return; // Don't close the payment modal yet
             } else {
-                // Process cash/card/insurance payment
+                // Process cash/insurance payment
                 updateBillStatus(selectedBill.id, 'Paid');
                 setSelectedBill(null);
                 alert('Payment processed successfully!');
@@ -124,8 +130,8 @@ const BillingManager = () => {
                                         <div className="flex items-center gap-2">
                                             <p className="font-bold text-slate-800">{bill.patientId}</p>
                                             <span className={`text-xs px-2 py-0.5 rounded-full border ${bill.type === 'Consultation' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                    bill.type === 'Pharmacy' ? 'bg-purple-50 text-purple-600 border-purple-100' :
-                                                        'bg-slate-50 text-slate-600 border-slate-100'
+                                                bill.type === 'Pharmacy' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                                                    'bg-slate-50 text-slate-600 border-slate-100'
                                                 }`}>{bill.type}</span>
                                         </div>
                                         <p className="text-xs text-slate-500">{new Date(bill.date).toLocaleString()} • {bill.id}</p>
@@ -171,12 +177,13 @@ const BillingManager = () => {
             {/* Payment Modal */}
             {selectedBill && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
-                        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in max-h-[90vh] flex flex-col">
+                        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex-shrink-0">
                             <h3 className="font-bold text-lg text-slate-800">Process Payment</h3>
                             <p className="text-sm text-slate-500">Patient ID: {selectedBill.patientId}</p>
                         </div>
-                        <div className="p-6 space-y-4">
+
+                        <div className="p-6 space-y-4 overflow-y-auto flex-grow">
                             <div className="bg-slate-50 p-4 rounded-xl text-center">
                                 <p className="text-sm text-slate-500 mb-1">Total Amount Due</p>
                                 <p className="text-3xl font-bold text-primary">{formatCurrency(selectedBill.amount)}</p>
@@ -236,7 +243,8 @@ const BillingManager = () => {
                                 </div>
                             </div>
                         </div>
-                        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+
+                        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 flex-shrink-0">
                             <button onClick={() => setSelectedBill(null)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium">Cancel</button>
                             <button
                                 onClick={handleProcessPayment}
@@ -252,6 +260,40 @@ const BillingManager = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Card Payment Modal */}
+            {showCardModal && selectedBill && (
+                <CardPaymentModal
+                    amount={selectedBill.amount}
+                    currency="UGX"
+                    patientInfo={{
+                        id: selectedBill.patientId,
+                        name: selectedBill.patientName || selectedBill.patientId
+                    }}
+                    onClose={() => {
+                        setShowCardModal(false);
+                        setSelectedBill(null);
+                        setPaymentMethod('cash');
+                    }}
+                    onSuccess={(paymentResult) => {
+                        // Update bill with card payment details
+                        updateBillStatus(selectedBill.id, 'Paid', {
+                            paymentMethod: 'Card',
+                            cardType: paymentResult.cardType,
+                            last4: paymentResult.last4,
+                            transactionId: paymentResult.transactionId,
+                            authorizationCode: paymentResult.authorizationCode,
+                            gateway: paymentResult.gateway
+                        });
+
+                        setShowCardModal(false);
+                        setSelectedBill(null);
+                        setPaymentMethod('cash');
+
+                        alert(`Card payment successful!\nTransaction ID: ${paymentResult.transactionId}\nCard: ${paymentResult.cardType.toUpperCase()} •••• ${paymentResult.last4}`);
+                    }}
+                />
             )}
         </div>
     );

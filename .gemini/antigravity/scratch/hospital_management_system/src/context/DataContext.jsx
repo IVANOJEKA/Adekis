@@ -17,6 +17,19 @@ const initialPatientData = [
     { id: 'P-003', name: 'Robert Johnson', age: 58, gender: 'Male', phone: '0700345678', lastVisit: '2024-01-19', patientCategory: 'IPD' },
 ];
 
+const initialLabInventory = [
+    { id: 'INV-001', name: 'Malaria Test Kit', category: 'Test Kits', stock: 150, unit: 'pcs', minStock: 20, status: 'Good' },
+    { id: 'INV-002', name: 'CBC Reagent A', category: 'Reagents', stock: 5, unit: 'liters', minStock: 2, status: 'Low' },
+    { id: 'INV-003', name: 'Syringes 5ml', category: 'Consumables', stock: 500, unit: 'box', minStock: 50, status: 'Good' },
+    { id: 'INV-004', name: 'Urine Containers', category: 'Consumables', stock: 200, unit: 'pcs', minStock: 30, status: 'Good' },
+    { id: 'INV-005', name: 'HIV Test Kit', category: 'Test Kits', stock: 80, unit: 'pcs', minStock: 15, status: 'Good' },
+];
+
+const initialLabOrders = [
+    { id: 'LAB-001', patientName: 'John Doe', patientId: 'P-001', orderType: 'Doctor', requestedBy: 'Dr. Sarah Wilson', testType: 'Complete Blood Count (CBC)', date: '2024-01-20 09:30', status: 'Pending', priority: 'Routine', sampleCollected: false },
+    { id: 'LAB-002', patientName: 'Jane Smith', patientId: 'P-002', orderType: 'Walk-in', requestedBy: 'Reception Desk', testType: 'Malaria Test', date: '2024-01-20 10:15', status: 'Sample Collected', priority: 'Urgent', sampleCollected: true, amount: 25000 },
+];
+
 const initialFinancialData = [
     { id: 'INV-001', patientId: 'P-001', amount: 150000, status: 'Paid', date: '2024-01-15', type: 'Consultation' },
     { id: 'INV-002', patientId: 'P-002', amount: 250000, status: 'Pending', date: '2024-01-18', type: 'Lab Tests' },
@@ -30,17 +43,30 @@ const initialClinicalData = [
 ];
 
 const initialUserData = [
-    { id: 'U-001', name: 'Dr. Sarah Wilson', role: 'Doctor', department: 'General Medicine', status: 'Active' },
-    { id: 'U-002', name: 'John Admin', role: 'Administrator', department: 'Admin', status: 'Active' },
-    { id: 'U-003', name: 'Mary Nurse', role: 'Nurse', department: 'Nursing', status: 'Active' },
+    { id: 'U-001', name: 'Admin User', email: 'admin@adekisplus.com', password: 'admin123', role: 'Administrator', department: 'Administration', status: 'Active', permissions: ['*'] },
+    { id: 'U-002', name: 'Dr. Sarah Wilson', email: 'doctor@adekisplus.com', password: 'doctor123', role: 'Doctor', department: 'General Medicine', status: 'Active', permissions: null },
+    { id: 'U-003', name: 'Mary Nurse', email: 'nurse@adekisplus.com', password: 'nurse123', role: 'Nurse', department: 'Nursing', status: 'Active', permissions: null },
+    { id: 'U-004', name: 'John Pharmacist', email: 'pharmacist@adekisplus.com', password: 'pharma123', role: 'Pharmacist', department: 'Pharmacy', status: 'Active', permissions: null },
+    { id: 'U-005', name: 'Lisa Lab Tech', email: 'lab@adekisplus.com', password: 'lab123', role: 'Lab Technician', department: 'Laboratory', status: 'Active', permissions: null },
+    { id: 'U-006', name: 'Mike Reception', email: 'reception@adekisplus.com', password: 'reception123', role: 'Receptionist', department: 'Reception', status: 'Active', permissions: null },
+    { id: 'U-007', name: 'Jane Finance', email: 'finance@adekisplus.com', password: 'finance123', role: 'Finance Officer', department: 'Finance', status: 'Active', permissions: null },
 ];
 
+// System Settings - Consultation Fees and Configuration
 const initialSystemSettings = {
-    hospitalName: 'General Hospital',
+    hospitalName: 'Central Hospital',
     currency: 'UGX',
     language: 'English',
     timezone: 'EAT',
     theme: 'light',
+    consultationFees: {
+        OPD: 50000,  // Outpatient consultation fee
+        IPD: 100000  // Inpatient consultation fee
+    },
+    paymentMethods: ['Cash', 'Card', 'Mobile Money', 'Insurance', 'HMS Wallet'],
+    receiptPrefix: 'REC',
+    hospitalAddress: 'Kampala, Uganda',
+    hospitalPhone: '+256 700 000000'
 };
 
 const initialInsuranceData = [
@@ -50,22 +76,44 @@ const initialInsuranceData = [
 ];
 
 const initialServicesData = [
-    { id: 'SRV-001', name: 'General Consultation', category: 'Consultation', price: 50000, duration: '30 mins', status: 'Active', parameters: [] },
+    // Consultation Services
+    { id: 'SRV-001', name: 'General Consultation', category: 'Consultation', department: 'General', price: 50000, insurancePrice: 40000, duration: '30 mins', status: 'Active', description: 'Standard outpatient consultation', parameters: [] },
+    { id: 'SRV-002', name: 'Specialist Consultation - Cardiology', category: 'Consultation', department: 'Cardiology', price: 100000, insurancePrice: 80000, duration: '45 mins', status: 'Active', description: 'Consultation with cardiologist', parameters: [] },
+    { id: 'SRV-003', name: 'Specialist Consultation - Pediatrics', category: 'Consultation', department: 'Pediatrics', price: 80000, insurancePrice: 65000, duration: '45 mins', status: 'Active', description: 'Consultation with pediatrician', parameters: [] },
+    { id: 'SRV-004', name: 'Emergency Consultation', category: 'Consultation', department: 'Emergency', price: 75000, insurancePrice: 60000, duration: '30 mins', status: 'Active', description: 'Emergency room consultation', parameters: [] },
+
+    // Theatre/Surgery Services
+    { id: 'SRV-005', name: 'Minor Surgery - Theatre Charges', category: 'Surgery', department: 'General', price: 500000, insurancePrice: 400000, duration: '2 hours', status: 'Active', description: 'Minor surgical procedure including theatre time', parameters: [] },
+    { id: 'SRV-006', name: 'Major Surgery - Theatre Charges', category: 'Surgery', department: 'General', price: 1500000, insurancePrice: 1200000, duration: '4 hours', status: 'Active', description: 'Major surgical procedure including theatre time', parameters: [] },
+    { id: 'SRV-007', name: 'Caesarean Section (C-Section)', category: 'Surgery', department: 'Maternity', price: 1200000, insurancePrice: 950000, duration: '3 hours', status: 'Active', description: 'C-section delivery including theatre and post-op care', parameters: [] },
+    { id: 'SRV-008', name: 'Appendectomy', category: 'Surgery', department: 'General', price: 1000000, insurancePrice: 800000, duration: '2 hours', status: 'Active', description: 'Appendix removal surgery', parameters: [] },
+    { id: 'SRV-009', name: 'Theatre Use - Per Hour', category: 'Surgery', department: 'General', price: 200000, insurancePrice: 160000, duration: '1 hour', status: 'Active', description: 'Operating theatre hourly rate', parameters: [] },
+
+    // Laboratory Services
     {
-        id: 'SRV-002',
+        id: 'SRV-010',
         name: 'Blood Test (Complete)',
         category: 'Laboratory',
+        department: 'Laboratory',
         price: 35000,
+        insurancePrice: 28000,
         duration: '15 mins',
         status: 'Active',
+        description: 'Complete blood count with differential',
         parameters: [
             { name: 'Hemoglobin', unit: 'g/dL', range: '13.5-17.5' },
             { name: 'WBC', unit: '10^9/L', range: '4.5-11.0' },
             { name: 'Platelets', unit: '10^9/L', range: '150-450' }
         ]
     },
-    { id: 'SRV-003', name: 'X-Ray Chest', category: 'Radiology', price: 45000, duration: '20 mins', status: 'Active', parameters: [] },
-    { id: 'SRV-004', name: 'Ultrasound Scan', category: 'Radiology', price: 80000, duration: '30 mins', status: 'Active', parameters: [] },
+
+    // Radiology Services
+    { id: 'SRV-011', name: 'X-Ray Chest', category: 'Radiology', department: 'Radiology', price: 45000, insurancePrice: 36000, duration: '20 mins', status: 'Active', description: 'Chest X-ray imaging', parameters: [] },
+    { id: 'SRV-012', name: 'Ultrasound Scan', category: 'Radiology', department: 'Radiology', price: 80000, insurancePrice: 64000, duration: '30 mins', status: 'Active', description: 'Ultrasound imaging', parameters: [] },
+
+    // Procedures
+    { id: 'SRV-013', name: 'Wound Dressing', category: 'Procedure', department: 'General', price: 25000, insurancePrice: 20000, duration: '20 mins', status: 'Active', description: 'Wound cleaning and dressing', parameters: [] },
+    { id: 'SRV-014', name: 'Suturing', category: 'Procedure', department: 'Emergency', price: 40000, insurancePrice: 32000, duration: '30 mins', status: 'Active', description: 'Wound suturing procedure', parameters: [] },
 ];
 
 const initialDebtData = [
@@ -147,12 +195,6 @@ const initialPrescriptionData = [
     { id: 'RX-003', patientName: 'Sarah Wilson', patientId: 'P003', doctor: 'Dr. Sarah Wilson', date: '2024-01-20 11:00', status: 'Dispensed', medications: [{ name: 'Omeprazole 20mg', quantity: 2, dosage: '1 tab before breakfast' }, { name: 'Cetirizine 10mg', quantity: 1, dosage: '1 tab at night' }], total: 11500, notes: '', dispensedBy: 'Jane Pharmacist', dispensedAt: '2024-01-20 11:30' },
     { id: 'RX-004', patientName: 'David Lee', patientId: 'P004', doctor: 'Dr. Michael Brown', date: '2024-01-19 14:20', status: 'Pending', medications: [{ name: 'Ibuprofen 400mg', quantity: 1, dosage: '1 tab 3x daily after meals' }], total: 3000, notes: 'For back pain management' },
     { id: 'RX-005', patientName: 'Emma Watson', patientId: 'P005', doctor: 'Dr. Sarah Wilson', date: '2024-01-19 15:45', status: 'Cleared', medications: [{ name: 'Cough Syrup 100ml', quantity: 1, dosage: '10ml 3x daily' }], total: 8000, notes: 'Persistent cough' },
-];
-
-const initialLabOrders = [
-    { id: 'ORD-001', patientId: 'P-001', type: 'Laboratory', test: 'CBC', doctor: 'Dr. Sarah Wilson', date: '2024-01-20T09:00:00', status: 'Pending', priority: 'Routine' },
-    { id: 'ORD-002', patientId: 'P-002', type: 'Radiology', test: 'Chest X-Ray', doctor: 'Dr. Michael Brown', date: '2024-01-20T10:30:00', status: 'Pending', priority: 'Urgent' },
-    { id: 'ORD-003', patientId: 'P-003', type: 'Laboratory', test: 'Electrolytes', doctor: 'Dr. Sarah Wilson', date: '2024-01-20T11:00:00', status: 'Completed', priority: 'Routine' }
 ];
 
 // Nursing Module Data
@@ -1165,6 +1207,41 @@ const initialAmbulanceFleetData = [
     }
 ];
 
+
+
+const initialSuppliersData = [
+    {
+        id: 'SUP-001',
+        name: 'PharmaCorp',
+        contact: 'John Doe',
+        email: 'john@pharmacorp.com',
+        address: '123 Pharma Way, Industrial Area',
+        status: 'Active',
+        products: 45,
+        orders: 12
+    },
+    {
+        id: 'SUP-002',
+        name: 'MediSupply',
+        contact: 'Jane Smith',
+        email: 'jane@medisupply.com',
+        address: '456 Medical Ave, City Center',
+        status: 'Active',
+        products: 32,
+        orders: 8
+    },
+    {
+        id: 'SUP-003',
+        name: 'HealthCare Ltd',
+        contact: 'Robert Johnson',
+        email: 'robert@healthcare.com',
+        address: '789 Health Blvd, Westlands',
+        status: 'Active',
+        products: 28,
+        orders: 5
+    }
+];
+
 const initialDispatchRequestsData = [
     {
         id: 'REQ-001',
@@ -1816,12 +1893,30 @@ const initialAppointmentsData = [
     }
 ];
 
+const initialCasesData = [
+    {
+        id: 'CASE-2024-001',
+        patientId: 'P-001',
+        status: 'Open',
+        startDate: '2024-01-15',
+        endDate: null,
+        type: 'OPD',
+        department: 'General Medicine',
+        chiefComplaint: 'Persistent Headache',
+        assignedDoctorId: 'U-001'
+    }
+];
 
 export const DataProvider = ({ children }) => {
     // Load data from localStorage or use initial data
     const [patients, setPatients] = useState(() => {
         const saved = localStorage.getItem('hms_patients');
         return saved ? JSON.parse(saved) : initialPatientData;
+    });
+
+    const [cases, setCases] = useState(() => {
+        const saved = localStorage.getItem('hms_cases');
+        return saved ? JSON.parse(saved) : initialCasesData;
     });
 
     const [financialRecords, setFinancialRecords] = useState(() => {
@@ -1841,7 +1936,8 @@ export const DataProvider = ({ children }) => {
 
     const [systemSettings, setSystemSettings] = useState(() => {
         const saved = localStorage.getItem('hms_settings');
-        return saved ? JSON.parse(saved) : initialSystemSettings;
+        // Merge saved settings with initial settings to ensure new properties are included
+        return saved ? { ...initialSystemSettings, ...JSON.parse(saved) } : initialSystemSettings;
     });
 
     const [resetHistory, setResetHistory] = useState(() => {
@@ -1894,6 +1990,11 @@ export const DataProvider = ({ children }) => {
         return saved ? JSON.parse(saved) : initialPrescriptionData;
     });
 
+    const [suppliers, setSuppliers] = useState(() => {
+        const saved = localStorage.getItem('hms_suppliers');
+        return saved ? JSON.parse(saved) : initialSuppliersData;
+    });
+
     const [camps, setCamps] = useState(() => {
         const saved = localStorage.getItem('hms_camps');
         return saved ? JSON.parse(saved) : initialCampsData;
@@ -1933,6 +2034,11 @@ export const DataProvider = ({ children }) => {
     const [labOrders, setLabOrders] = useState(() => {
         const saved = localStorage.getItem('hms_lab_orders');
         return saved ? JSON.parse(saved) : initialLabOrders;
+    });
+
+    const [labInventory, setLabInventory] = useState(() => {
+        const saved = localStorage.getItem('hms_lab_inventory');
+        return saved ? JSON.parse(saved) : initialLabInventory;
     });
 
     // HR Module State
@@ -2152,6 +2258,27 @@ export const DataProvider = ({ children }) => {
         return saved ? JSON.parse(saved) : initialBackupHistory;
     });
 
+    // User Management State
+    // User Management State
+    const [usersData, setUsersData] = useState(() => {
+        const saved = localStorage.getItem('hms_users');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                // Check if data is stale (missing email field)
+                if (parsed.length > 0 && !parsed[0].email) {
+                    console.log('Detected stale user data, resetting to defaults...');
+                    return initialUserData;
+                }
+                return parsed;
+            } catch (e) {
+                console.error('Error parsing saved users, resetting...', e);
+                return initialUserData;
+            }
+        }
+        return initialUserData;
+    });
+
     useEffect(() => { localStorage.setItem('hms_audit_logs', JSON.stringify(auditLogs)); }, [auditLogs]);
     useEffect(() => { localStorage.setItem('hms_login_history', JSON.stringify(loginHistory)); }, [loginHistory]);
     useEffect(() => { localStorage.setItem('hms_security_settings', JSON.stringify(securitySettings)); }, [securitySettings]);
@@ -2205,6 +2332,16 @@ export const DataProvider = ({ children }) => {
     useEffect(() => { localStorage.setItem('hms_inventory', JSON.stringify(inventory)); }, [inventory]);
     useEffect(() => { localStorage.setItem('hms_prescriptions', JSON.stringify(prescriptions)); }, [prescriptions]);
     useEffect(() => { localStorage.setItem('hms_camps', JSON.stringify(camps)); }, [camps]);
+    useEffect(() => { localStorage.setItem('hms_lab_orders', JSON.stringify(labOrders)); }, [labOrders]);
+    useEffect(() => { localStorage.setItem('hms_lab_inventory', JSON.stringify(labInventory)); }, [labInventory]);
+
+    // Nursing Module persistence
+    useEffect(() => { localStorage.setItem('hms_vital_signs', JSON.stringify(vitalSigns)); }, [vitalSigns]);
+    useEffect(() => { localStorage.setItem('hms_nursing_notes', JSON.stringify(nursingNotes)); }, [nursingNotes]);
+    useEffect(() => { localStorage.setItem('hms_care_plans', JSON.stringify(carePlans)); }, [carePlans]);
+    useEffect(() => { localStorage.setItem('hms_handover_reports', JSON.stringify(handoverReports)); }, [handoverReports]);
+    useEffect(() => { localStorage.setItem('hms_nursing_tasks', JSON.stringify(nursingTasks)); }, [nursingTasks]);
+    useEffect(() => { localStorage.setItem('hms_medication_logs', JSON.stringify(medicationLogs)); }, [medicationLogs]);
 
     // HR Module persistence
     useEffect(() => { localStorage.setItem('hms_departments', JSON.stringify(departments)); }, [departments]);
@@ -2480,9 +2617,9 @@ export const DataProvider = ({ children }) => {
         return newBill;
     };
 
-    const updateBillStatus = (billId, status) => {
+    const updateBillStatus = (billId, status, metadata = {}) => {
         setFinancialRecords(prev => prev.map(bill =>
-            bill.id === billId ? { ...bill, status } : bill
+            bill.id === billId ? { ...bill, status, ...metadata } : bill
         ));
     };
 
@@ -2511,7 +2648,9 @@ export const DataProvider = ({ children }) => {
         handoverReports,
         nursingTasks,
         medicationLogs,
+        medicationLogs,
         labOrders,
+        labInventory,
         // Setters
         setPatients,
         setFinancialRecords,
@@ -2536,6 +2675,7 @@ export const DataProvider = ({ children }) => {
         setNursingTasks,
         setMedicationLogs,
         setLabOrders,
+        setLabInventory,
 
         // HR Module Data
         departments,
@@ -2630,11 +2770,22 @@ export const DataProvider = ({ children }) => {
         bloodDonors, setBloodDonors,
         bloodRequests, setBloodRequests,
 
+        // Case Management Data
+        cases, setCases,
+
+        // Pharmacy Data
+        suppliers, setSuppliers,
+
         // Admin Module Data
         auditLogs, setAuditLogs,
         loginHistory, setLoginHistory,
         securitySettings, setSecuritySettings,
+        loginHistory, setLoginHistory,
+        securitySettings, setSecuritySettings,
         backupHistory, setBackupHistory,
+
+        // User Data
+        usersData, setUsersData,
 
         // Admin Functions
         performDataReset,
@@ -2644,6 +2795,10 @@ export const DataProvider = ({ children }) => {
         // Printer Settings
         printerSettings,
         setPrinterSettings,
+
+        // System Settings
+        systemSettings,
+        setSystemSettings,
 
         // Billing Functions
         addBill,

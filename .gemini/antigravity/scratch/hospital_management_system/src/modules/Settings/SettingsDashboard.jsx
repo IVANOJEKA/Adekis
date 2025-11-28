@@ -36,7 +36,8 @@ const SettingsDashboard = () => {
         address: 'Plot 123, Kampala Road, Kampala, Uganda',
         openingTime: '08:00',
         closingTime: '20:00',
-        emergency24_7: true
+        emergency24_7: true,
+        logo: localStorage.getItem('hospital_logo') || null
     });
 
     const [billingSettings, setBillingSettings] = useState({
@@ -354,16 +355,63 @@ const SettingsDashboard = () => {
                                     <div className="md:col-span-2">
                                         <label className="text-sm font-medium text-slate-700 mb-2 block">Hospital Logo</label>
                                         <div className="flex items-center gap-4">
-                                            <div className="w-24 h-24 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center bg-slate-50">
-                                                <span className="text-slate-400 text-xs">No Logo</span>
+                                            <div className="w-24 h-24 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center bg-slate-50 overflow-hidden relative">
+                                                {hospitalInfo.logo ? (
+                                                    <img
+                                                        src={hospitalInfo.logo}
+                                                        alt="Hospital Logo"
+                                                        className="w-full h-full object-contain"
+                                                    />
+                                                ) : (
+                                                    <span className="text-slate-400 text-xs">No Logo</span>
+                                                )}
                                             </div>
-                                            <button
-                                                onClick={() => showToast('Logo upload feature will be implemented with backend')}
-                                                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark font-medium text-sm flex items-center gap-2"
-                                            >
-                                                <Upload size={16} />
-                                                Upload Logo
-                                            </button>
+                                            <div>
+                                                <input
+                                                    type="file"
+                                                    id="logo-upload"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files[0];
+                                                        if (file) {
+                                                            if (file.size > 5000000) { // 5MB limit
+                                                                showToast('Image size should be less than 5MB');
+                                                                return;
+                                                            }
+                                                            const reader = new FileReader();
+                                                            reader.onloadend = () => {
+                                                                const logoData = reader.result;
+                                                                setHospitalInfo(prev => ({ ...prev, logo: logoData }));
+                                                                // Persist to localStorage immediately
+                                                                localStorage.setItem('hospital_logo', logoData);
+                                                                showToast('Logo uploaded successfully!');
+                                                            };
+                                                            reader.readAsDataURL(file);
+                                                        }
+                                                    }}
+                                                />
+                                                <label
+                                                    htmlFor="logo-upload"
+                                                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark font-medium text-sm flex items-center gap-2 cursor-pointer transition-colors"
+                                                >
+                                                    <Upload size={16} />
+                                                    Upload Logo
+                                                </label>
+                                                <p className="text-xs text-slate-500 mt-2">Max size 5MB. PNG, JPG supported.</p>
+                                                {hospitalInfo.logo && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setHospitalInfo(prev => ({ ...prev, logo: null }));
+                                                            localStorage.removeItem('hospital_logo');
+                                                            showToast('Logo removed');
+                                                        }}
+                                                        className="text-xs text-red-500 hover:text-red-700 mt-1 flex items-center gap-1"
+                                                    >
+                                                        <Trash2 size={12} /> Remove Logo
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

@@ -1,37 +1,52 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
-// import { ... } from 'lucide-react'; // Icons removed
+import React, { useMemo } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { LogOut } from 'lucide-react';
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
-  const menuItems = [
-    { path: '/', label: 'Dashboard' },
-    { path: '/reception', label: 'Reception' },
-    { path: '/doctor', label: 'Doctor' },
-    { path: '/triage', label: 'Triage Station' },
-    { path: '/emr', label: 'EMR' },
-    { path: '/pharmacy', label: 'Pharmacy' },
-    { path: '/laboratory', label: 'Laboratory' },
-    { path: '/pathology', label: 'Pathology' },
-    { path: '/radiology', label: 'Radiology' },
-    { path: '/bed-management', label: 'Bed Management' },
-    { path: '/nursing', label: 'Nursing Care' },
-    { path: '/theatre', label: 'Theatre' },
-    { path: '/maternity', label: 'Maternity' },
-    { path: '/blood-bank', label: 'Blood Bank' },
-    { path: '/ambulance', label: 'Ambulance' },
-    { path: '/finance', label: 'Finance & Insurance' },
-    { path: '/insurance', label: 'Insurance Management' },
-    { path: '/hr', label: 'HR Management' },
-    { path: '/services', label: 'Services & Prices' },
-    { path: '/wallet', label: 'HMS Wallet' },
-    { path: '/debt', label: 'Debt Management' },
-    { path: '/communication', label: 'Communication' },
-    { path: '/camps', label: 'Health Camps' },
-    { path: '/queue', label: 'Queue Mgmt' },
-    { path: '/reports', label: 'Reports & Records' },
-    { path: '/admin', label: 'Administration' },
-    { path: '/settings', label: 'Settings' },
+  const { currentUser, isAuthenticated, hasPermission, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const allMenuItems = [
+    { path: '/', label: 'Dashboard', permission: 'dashboard' },
+    { path: '/reception', label: 'Reception', permission: 'reception' },
+    { path: '/doctor', label: 'Doctor', permission: 'doctor' },
+    { path: '/triage', label: 'Triage Station', permission: 'triage' },
+    { path: '/emr', label: 'EMR', permission: 'emr' },
+    { path: '/pharmacy', label: 'Pharmacy', permission: 'pharmacy' },
+    { path: '/laboratory', label: 'Laboratory', permission: 'laboratory' },
+    { path: '/pathology', label: 'Pathology', permission: 'pathology' },
+    { path: '/radiology', label: 'Radiology', permission: 'radiology' },
+    { path: '/bed-management', label: 'Bed Management', permission: 'bed-management' },
+    { path: '/nursing', label: 'Nursing Care', permission: 'nursing' },
+    { path: '/theatre', label: 'Theatre', permission: 'theatre' },
+    { path: '/maternity', label: 'Maternity', permission: 'maternity' },
+    { path: '/blood-bank', label: 'Blood Bank', permission: 'blood-bank' },
+    { path: '/ambulance', label: 'Ambulance', permission: 'ambulance' },
+    { path: '/finance', label: 'Finance & Insurance', permission: 'finance' },
+    { path: '/insurance', label: 'Insurance Management', permission: 'insurance' },
+    { path: '/hr', label: 'HR Management', permission: 'hr' },
+    { path: '/services', label: 'Services & Prices', permission: 'services' },
+    { path: '/wallet', label: 'HMS Wallet', permission: 'wallet' },
+    { path: '/debt', label: 'Debt Management', permission: 'debt' },
+    { path: '/communication', label: 'Communication', permission: 'communication' },
+    { path: '/camps', label: 'Health Camps', permission: 'camps' },
+    { path: '/queue', label: 'Queue Mgmt', permission: 'queue' },
+    { path: '/reports', label: 'Reports & Records', permission: 'reports' },
+    { path: '/admin', label: 'Administration', permission: 'admin' },
+    { path: '/settings', label: 'Settings', permission: 'settings' },
   ];
+
+  // Filter menu items based on user permissions
+  const menuItems = useMemo(() => {
+    if (!isAuthenticated) return allMenuItems;
+    return allMenuItems.filter(item => hasPermission(item.permission));
+  }, [isAuthenticated, currentUser]);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/staff-login');
+  };
 
   return (
     <>
@@ -78,15 +93,36 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
 
         {/* Footer */}
         <div className="p-4 border-t border-slate-100">
-          <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-50 border border-slate-100">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-xs font-bold text-white">
-              AD
+          {isAuthenticated && currentUser ? (
+            <>
+              <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-50 border border-slate-100 mb-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-xs font-bold text-white">
+                  {currentUser.name.charAt(0)}
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <p className="text-sm font-bold text-slate-700 truncate">{currentUser.name}</p>
+                  <p className="text-xs text-slate-500 truncate">{currentUser.role}</p>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
+              >
+                <LogOut size={16} />
+                <span>Logout</span>
+              </button>
+            </>
+          ) : (
+            <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-50 border border-slate-100">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-xs font-bold text-white">
+                AD
+              </div>
+              <div className="overflow-hidden">
+                <p className="text-sm font-bold text-slate-700 truncate">Guest User</p>
+                <p className="text-xs text-slate-500 truncate">Not logged in</p>
+              </div>
             </div>
-            <div className="overflow-hidden">
-              <p className="text-sm font-bold text-slate-700 truncate">Admin User</p>
-              <p className="text-xs text-slate-500 truncate">admin@adekisplus.com</p>
-            </div>
-          </div>
+          )}
         </div>
       </aside>
     </>

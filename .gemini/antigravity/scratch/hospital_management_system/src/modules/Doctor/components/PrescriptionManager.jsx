@@ -2,12 +2,19 @@ import React, { useState } from 'react';
 import { FileText, Plus, Search, Printer, Send, Trash2, X } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 
-const PrescriptionManager = () => {
+const PrescriptionManager = ({ triggerNewPrescription }) => {
     const { patients = [], inventory = [], prescriptions = [], setPrescriptions } = useData();
     const [showModal, setShowModal] = useState(false);
     const [showPrintModal, setShowPrintModal] = useState(false);
     const [selectedPrescription, setSelectedPrescription] = useState(null);
     const [medicineSearches, setMedicineSearches] = useState([]);
+
+    // Listen for external trigger to open modal
+    React.useEffect(() => {
+        if (triggerNewPrescription > 0) {
+            setShowModal(true);
+        }
+    }, [triggerNewPrescription]);
 
     const [formData, setFormData] = useState({
         patientId: '',
