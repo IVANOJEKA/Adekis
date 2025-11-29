@@ -4,7 +4,7 @@ import { useData } from '../../context/DataContext';
 import { useCurrency } from '../../context/CurrencyContext';
 
 const ServicesDashboard = () => {
-    const { servicesData, setServicesData, wards, setWards, beds, setBeds } = useData();
+    const { servicesData, addService, updateService, deleteService, wards, setWards, beds, setBeds } = useData();
     const { formatCurrency } = useCurrency();
 
     const [activeMainTab, setActiveMainTab] = useState('services'); // 'services' or 'beds'
@@ -118,31 +118,29 @@ const ServicesDashboard = () => {
         setFormData({ ...formData, parameters: newParams });
     };
 
-    const handleSave = (e) => {
+    const handleSave = async (e) => {
         e.preventDefault();
 
-        const newService = {
-            id: currentService ? currentService.id : `SRV-${Date.now()}`,
+        const serviceData = {
             ...formData,
             price: parseFloat(formData.price) || 0,
-            insurancePrice: parseFloat(formData.insurancePrice) || 0,
-            lastUpdated: new Date().toISOString()
+            insurancePrice: parseFloat(formData.insurancePrice) || 0
         };
 
         if (currentService) {
             // Update existing
-            setServicesData(prev => prev.map(item => item.id === currentService.id ? newService : item));
+            await updateService(currentService.id, serviceData);
         } else {
             // Add new
-            setServicesData(prev => [...prev, newService]);
+            await addService(serviceData);
         }
 
         handleCloseModal();
     };
 
-    const handleDelete = (id) => {
+    const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this service?')) {
-            setServicesData(prev => prev.filter(item => item.id !== id));
+            await deleteService(id);
         }
     };
 

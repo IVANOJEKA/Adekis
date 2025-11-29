@@ -98,24 +98,6 @@ export const patientsAPI = {
 
     // Update patient
     update: async (id, patientData) => {
-        const response = await api.put(`/patients/${id}`, patientData);
-        return response.data.patient;
-    },
-
-    // Delete patient (soft delete)
-    delete: async (id) => {
-        const response = await api.delete(`/patients/${id}`);
-        return response.data;
-    }
-};
-
-// ==================== USERS API ====================
-
-export const usersAPI = {
-    // Get all users (for admin)
-    getAll: async () => {
-        const response = await api.get('/users');
-        return response.data;
     },
 
     // Create user

@@ -18,7 +18,8 @@ import ManualBillingModal from './components/ManualBillingModal';
 const FinanceDashboard = () => {
     const {
         financialRecords,
-        setFinancialRecords,
+        updateBill,
+        addBill,
         clinicalRecords,
         setClinicalRecords,
         patients,
@@ -120,12 +121,13 @@ const FinanceDashboard = () => {
     }, [financialRecords]);
 
     // Handlers
-    const processPayment = (paymentData) => {
-        setFinancialRecords(financialRecords.map(r =>
-            r.id === selectedRecord.id
-                ? { ...r, status: 'Paid', paidDate: new Date().toISOString(), paymentMethod: paymentData.method, reference: paymentData.reference }
-                : r
-        ));
+    const processPayment = async (paymentData) => {
+        await updateBill(selectedRecord.id, {
+            status: 'Paid',
+            paidDate: new Date().toISOString(),
+            paymentMethod: paymentData.method,
+            reference: paymentData.reference
+        });
         setShowPaymentModal(false);
         setSelectedRecord(null);
     };
@@ -149,14 +151,14 @@ const FinanceDashboard = () => {
     const handleCreateManualBill = (billData) => {
         const billId = `INV-${Date.now()}`;
 
-        // Create financial record
+        // Create financial record via API
         const newBill = {
             id: billId,
             ...billData,
             createdAt: new Date().toISOString(),
             createdBy: 'Manual Entry'
         };
-        setFinancialRecords([newBill, ...financialRecords]);
+        addBill(newBill);
 
         // Sync to EMR (Clinical Records)
         const clinicalRecord = {

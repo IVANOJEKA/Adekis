@@ -14,6 +14,7 @@ const billRoutes = require('./routes/bills');
 const serviceRoutes = require('./routes/services');
 const queueRoutes = require('./routes/queue');
 const caseRoutes = require('./routes/cases');
+const inventoryRoutes = require('./routes/inventory');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -44,6 +45,7 @@ app.use('/api/bills', billRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/queue', queueRoutes);
 app.use('/api/cases', caseRoutes);
+app.use('/api/inventory', inventoryRoutes);
 
 // Start Server
 app.listen(PORT, () => {

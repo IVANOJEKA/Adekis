@@ -2221,10 +2221,62 @@ export const DataProvider = ({ children }) => {
         return saved ? JSON.parse(saved) : initialAdmissionsData;
     });
 
-    const [inventory, setInventory] = useState(() => {
-        const saved = localStorage.getItem('hms_inventory');
-        return saved ? JSON.parse(saved) : initialInventoryData;
-    });
+    // ==================== INVENTORY (API-BACKED) ====================
+    const [inventory, setInventory] = useState([]);
+    const [inventoryLoading, setInventoryLoading] = useState(true);
+
+    useEffect(() => {
+        fetchInventory();
+    }, []);
+
+    const fetchInventory = async () => {
+        try {
+            setInventoryLoading(true);
+            const { inventoryAPI } = await import('../services/api');
+            const data = await inventoryAPI.getAll();
+            setInventory(data);
+        } catch (err) {
+            console.error("Failed to fetch inventory:", err);
+        } finally {
+            setInventoryLoading(false);
+        }
+    };
+
+    const addInventoryItem = async (itemData) => {
+        try {
+            const { inventoryAPI } = await import('../services/api');
+            const newItem = await inventoryAPI.create(itemData);
+            setInventory(prev => [...prev, newItem]);
+            return { success: true, item: newItem };
+        } catch (err) {
+            console.error("Failed to add inventory item:", err);
+            return { success: false, error: err.message };
+        }
+    };
+
+    const updateInventoryItem = async (id, itemData) => {
+        try {
+            const { inventoryAPI } = await import('../services/api');
+            const updatedItem = await inventoryAPI.update(id, itemData);
+            setInventory(prev => prev.map(item => item.id === id ? updatedItem : item));
+            return { success: true, item: updatedItem };
+        } catch (err) {
+            console.error("Failed to update inventory item:", err);
+            return { success: false, error: err.message };
+        }
+    };
+
+    const deleteInventoryItem = async (id) => {
+        try {
+            const { inventoryAPI } = await import('../services/api');
+            await inventoryAPI.delete(id);
+            setInventory(prev => prev.filter(item => item.id !== id));
+            return { success: true };
+        } catch (err) {
+            console.error("Failed to delete inventory item:", err);
+            return { success: false, error: err.message };
+        }
+    };
 
     // ==================== PRESCRIPTIONS (API-BACKED) ====================
     const [prescriptions, setPrescriptions] = useState([]);
@@ -3074,19 +3126,6 @@ export const DataProvider = ({ children }) => {
         // Prescriptions (API-BACKED)
         prescriptions,
         setPrescriptions,
-        addPrescription,
-        updatePrescription,
-        fetchPrescriptions,
-        prescriptionsLoading,
-
-        // Blood Bank Data
-        bloodInventory, setBloodInventory,
-        bloodDonors, setBloodDonors,
-        bloodRequests, setBloodRequests,
-
-        // Case Management Data
-        cases, setCases,
-
         // Pharmacy Data
         suppliers, setSuppliers,
 

@@ -8,7 +8,7 @@ import {
 import QueueDisplay from './QueueDisplay';
 
 const QueueDashboard = () => {
-    const { queueEntries = [], setQueueEntries, patients = [], addBill } = useData();
+    const { queueEntries = [], addQueueEntry, updateQueueEntry, patients = [], addBill } = useData();
     const [selectedDepartment, setSelectedDepartment] = useState('All');
     const [showCheckInModal, setShowCheckInModal] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -101,8 +101,8 @@ const QueueDashboard = () => {
         e.preventDefault();
         const formData = new FormData(e.target);
 
+        // Create queue entry via API
         const newEntry = {
-            id: `Q-${Date.now()}`,
             queueNumber: generateQueueNumber(formData.get('department')),
             patientId: formData.get('patientId'),
             patientName: formData.get('patientName'),
@@ -110,16 +110,10 @@ const QueueDashboard = () => {
             service: formData.get('service'),
             priority: formData.get('priority'),
             status: 'Waiting',
-            checkInTime: new Date().toISOString(),
-            calledTime: null,
-            serviceStartTime: null,
-            serviceEndTime: null,
-            waitTime: 0,
-            estimatedWait: formData.get('priority') === 'Emergency' ? 0 : 15,
-            assignedStaff: null,
-            notes: formData.get('notes') || '',
-            transferredFrom: null
+            notes: formData.get('notes') || ''
         };
+
+        await addQueueEntry(newEntry);
 
         // Automatically add consultation bill
         if (formData.get('department') === 'Doctor') {
@@ -132,7 +126,6 @@ const QueueDashboard = () => {
             });
         }
 
-        setQueueEntries([...queueEntries, newEntry]);
         setShowCheckInModal(false);
         setSelectedPatient(null);
         setSearchTerm('');
