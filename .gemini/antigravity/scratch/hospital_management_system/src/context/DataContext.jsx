@@ -2381,35 +2381,32 @@ export const DataProvider = ({ children }) => {
         return saved ? JSON.parse(saved) : initialDepartmentsData;
     });
 
-    const [employees, setEmployees] = useState(() => {
-        const saved = localStorage.getItem('hms_employees');
-        return saved ? JSON.parse(saved) : initialEmployeesData;
-    });
+    // HR Module State - NOW USING API
+    const [employees, setEmployees] = useState([]);
+    const [leaveRequests, setLeaveRequests] = useState([]);
+    const [attendance, setAttendance] = useState([]);
+    const [payroll, setPayroll] = useState([]);
 
-    const [leaveRequests, setLeaveRequests] = useState(() => {
-        const saved = localStorage.getItem('hms_leave_requests');
-        return saved ? JSON.parse(saved) : initialLeaveRequestsData;
-    });
-
-    const [attendance, setAttendance] = useState(() => {
-        const saved = localStorage.getItem('hms_attendance');
-        return saved ? JSON.parse(saved) : initialEnhancedAttendanceData;
-    });
-
-    const [biometricDevices, setBiometricDevices] = useState(() => {
-        const saved = localStorage.getItem('hms_biometric_devices');
-        return saved ? JSON.parse(saved) : initialBiometricDevicesData;
-    });
-
-    const [attendancePolicies, setAttendancePolicies] = useState(() => {
-        const saved = localStorage.getItem('hms_attendance_policies');
-        return saved ? JSON.parse(saved) : initialAttendancePoliciesData;
-    });
-
-    const [payroll, setPayroll] = useState(() => {
-        const saved = localStorage.getItem('hms_payroll');
-        return saved ? JSON.parse(saved) : initialPayrollData;
-    });
+    // Fetch HR data from API
+    useEffect(() => {
+        const fetchHRData = async () => {
+            try {
+                const [emps, leaves, att, pay] = await Promise.all([
+                    hrAPI.getEmployees(),
+                    hrAPI.getLeaveRequests(),
+                    hrAPI.getAttendance(),
+                    hrAPI.getPayroll()
+                ]);
+                setEmployees(emps);
+                setLeaveRequests(leaves);
+                setAttendance(att);
+                setPayroll(pay);
+            } catch (error) {
+                console.error('Error fetching HR data:', error);
+            }
+        };
+        fetchHRData();
+    }, []);
 
     const [shifts, setShifts] = useState(() => {
         const saved = localStorage.getItem('hms_shifts');
@@ -2482,21 +2479,29 @@ export const DataProvider = ({ children }) => {
         return saved ? JSON.parse(saved) : initialPNCVisitsData;
     });
 
-    // Ambulance Module State
-    const [ambulanceFleet, setAmbulanceFleet] = useState(() => {
-        const saved = localStorage.getItem('hms_ambulance_fleet');
-        return saved ? JSON.parse(saved) : initialAmbulanceFleetData;
-    });
+    // Ambulance Module State - NOW USING API
+    const [ambulanceFleet, setAmbulanceFleet] = useState([]);
+    const [dispatchRequests, setDispatchRequests] = useState([]);
+    const [ambulanceTrips, setAmbulanceTrips] = useState([]);
 
-    const [dispatchRequests, setDispatchRequests] = useState(() => {
-        const saved = localStorage.getItem('hms_dispatch_requests');
-        return saved ? JSON.parse(saved) : initialDispatchRequestsData;
-    });
-
-    const [ambulanceTrips, setAmbulanceTrips] = useState(() => {
-        const saved = localStorage.getItem('hms_ambulance_trips');
-        return saved ? JSON.parse(saved) : initialAmbulanceTripsData;
-    });
+    // Fetch ambulance data from API
+    useEffect(() => {
+        const fetchAmbulanceData = async () => {
+            try {
+                const [fleet, requests, trips] = await Promise.all([
+                    ambulanceAPI.getFleet(),
+                    ambulanceAPI.getRequests(),
+                    ambulanceAPI.getTrips()
+                ]);
+                setAmbulanceFleet(fleet);
+                setDispatchRequests(requests);
+                setAmbulanceTrips(trips);
+            } catch (error) {
+                console.error('Error fetching ambulance data:', error);
+            }
+        };
+        fetchAmbulanceData();
+    }, []);
 
     const [ambulanceCrew, setAmbulanceCrew] = useState(() => {
         const saved = localStorage.getItem('hms_ambulance_crew');
@@ -2885,32 +2890,29 @@ export const DataProvider = ({ children }) => {
         { id: 'BR-001', patientName: 'James Wilson', bloodGroup: 'A+', units: 2, status: 'Pending', requestDate: '2024-02-20', urgency: 'Urgent', doctor: 'Dr. Sarah Wilson' },
     ];
 
-    const [bloodInventory, setBloodInventory] = useState(() => {
-        const saved = localStorage.getItem('bloodInventory');
-        return saved ? JSON.parse(saved) : initialBloodInventory;
-    });
+    // Blood Bank Module State - NOW USING API
+    const [bloodInventory, setBloodInventory] = useState([]);
+    const [bloodDonors, setBloodDonors] = useState([]);
+    const [bloodRequests, setBloodRequests] = useState([]);
 
-    const [bloodDonors, setBloodDonors] = useState(() => {
-        const saved = localStorage.getItem('bloodDonors');
-        return saved ? JSON.parse(saved) : initialBloodDonors;
-    });
-
-    const [bloodRequests, setBloodRequests] = useState(() => {
-        const saved = localStorage.getItem('bloodRequests');
-        return saved ? JSON.parse(saved) : initialBloodRequests;
-    });
-
+    // Fetch blood bank data from API
     useEffect(() => {
-        localStorage.setItem('bloodInventory', JSON.stringify(bloodInventory));
-    }, [bloodInventory]);
-
-    useEffect(() => {
-        localStorage.setItem('bloodDonors', JSON.stringify(bloodDonors));
-    }, [bloodDonors]);
-
-    useEffect(() => {
-        localStorage.setItem('bloodRequests', JSON.stringify(bloodRequests));
-    }, [bloodRequests]);
+        const fetchBloodBankData = async () => {
+            try {
+                const [inventory, donors, requests] = await Promise.all([
+                    bloodBankAPI.getInventory(),
+                    bloodBankAPI.getDonors(),
+                    bloodBankAPI.getRequests()
+                ]);
+                setBloodInventory(inventory);
+                setBloodDonors(donors);
+                setBloodRequests(requests);
+            } catch (error) {
+                console.error('Error fetching blood bank data:', error);
+            }
+        };
+        fetchBloodBankData();
+    }, []);
 
     // Get data counts
     const getDataCounts = () => ({
@@ -2949,6 +2951,221 @@ export const DataProvider = ({ children }) => {
             bill.id === billId ? { ...bill, status, ...metadata } : bill
         ));
     };
+
+    // ==================== BLOOD BANK CRUD FUNCTIONS ====================
+    const addBloodDonor = async (donorData) => {
+        try {
+            const donor = await bloodBankAPI.addDonor(donorData);
+            setBloodDonors(prev => [donor, ...prev]);
+            return donor;
+        } catch (error) {
+            console.error('Error adding donor:', error);
+            throw error;
+        }
+    };
+
+    const recordDonation = async (donorId) => {
+        try {
+            const donor = await bloodBankAPI.recordDonation(donorId);
+            setBloodDonors(prev => prev.map(d => d.id === donorId ? donor : d));
+            // Refresh inventory to get updated units
+            const inventory = await bloodBankAPI.getInventory();
+            setBloodInventory(inventory);
+            return donor;
+        } catch (error) {
+            console.error('Error recording donation:', error);
+            throw error;
+        }
+    };
+
+    const createBloodRequest = async (requestData) => {
+        try {
+            const request = await bloodBankAPI.createRequest(requestData);
+            setBloodRequests(prev => [request, ...prev]);
+            return request;
+        } catch (error) {
+            console.error('Error creating blood request:', error);
+            throw error;
+        }
+    };
+
+    const approveBloodRequest = async (requestId) => {
+        try {
+            const request = await bloodBankAPI.approveRequest(requestId);
+            setBloodRequests(prev => prev.map(r => r.id === requestId ? request : r));
+            // Refresh inventory to reflect deduction
+            const inventory = await bloodBankAPI.getInventory();
+            setBloodInventory(inventory);
+            return request;
+        } catch (error) {
+            console.error('Error approving request:', error);
+            throw error;
+        }
+    };
+
+    const rejectBloodRequest = async (requestId) => {
+        try {
+            const request = await bloodBankAPI.rejectRequest(requestId);
+            setBloodRequests(prev => prev.map(r => r.id === requestId ? request : r));
+            return request;
+        } catch (error) {
+            console.error('Error rejecting request:', error);
+            throw error;
+        }
+    };
+
+    const updateBloodInventory = async (id, data) => {
+        try {
+            const updated = await bloodBankAPI.updateInventory(id, data);
+            setBloodInventory(prev => prev.map(i => i.id === id ? updated : i));
+            return updated;
+        } catch (error) {
+            console.error('Error updating inventory:', error);
+            throw error;
+        }
+    };
+
+    // ==================== AMBULANCE CRUD FUNCTIONS ====================
+    const addAmbulance = async (ambulanceData) => {
+        try {
+            const ambulance = await ambulanceAPI.addAmbulance(ambulanceData);
+            setAmbulanceFleet(prev => [ambulance, ...prev]);
+            return ambulance;
+        } catch (error) {
+            console.error('Error adding ambulance:', error);
+            throw error;
+        }
+    };
+
+    const updateAmbulance = async (id, data) => {
+        try {
+            const ambulance = await ambulanceAPI.updateAmbulance(id, data);
+            setAmbulanceFleet(prev => prev.map(a => a.id === id ? ambulance : a));
+            return ambulance;
+        } catch (error) {
+            console.error('Error updating ambulance:', error);
+            throw error;
+        }
+    };
+
+    const createDispatchRequest = async (requestData) => {
+        try {
+            const request = await ambulanceAPI.createRequest(requestData);
+            setDispatchRequests(prev => [request, ...prev]);
+            return request;
+        } catch (error) {
+            console.error('Error creating dispatch request:', error);
+            throw error;
+        }
+    };
+
+    const dispatchAmbulanceToRequest = async (requestId, ambulanceId) => {
+        try {
+            const { request, trip } = await ambulanceAPI.dispatchAmbulance(requestId, ambulanceId);
+            setDispatchRequests(prev => prev.map(r => r.id === requestId ? request : r));
+            setAmbulanceTrips(prev => [trip, ...prev]);
+            // Refresh fleet to update ambulance status
+            const fleet = await ambulanceAPI.getFleet();
+            setAmbulanceFleet(fleet);
+            return { request, trip };
+        } catch (error) {
+            console.error('Error dispatching ambulance:', error);
+            throw error;
+        }
+    };
+
+    const completeAmbulanceTrip = async (tripId, data) => {
+        try {
+            const trip = await ambulanceAPI.completeTrip(tripId, data);
+            setAmbulanceTrips(prev => prev.map(t => t.id === tripId ? trip : t));
+            // Refresh fleet to update ambulance status back to available
+            const fleet = await ambulanceAPI.getFleet();
+            setAmbulanceFleet(fleet);
+            return trip;
+        } catch (error) {
+            console.error('Error completing trip:', error);
+            throw error;
+        }
+    };
+
+    // ==================== HR CRUD FUNCTIONS ====================
+    const addEmployee = async (employeeData) => {
+        try {
+            const employee = await hrAPI.addEmployee(employeeData);
+            setEmployees(prev => [employee, ...prev]);
+            return employee;
+        } catch (error) {
+            console.error('Error adding employee:', error);
+            throw error;
+        }
+    };
+
+    const updateEmployee = async (id, employeeData) => {
+        try {
+            const employee = await hrAPI.updateEmployee(id, employeeData);
+            setEmployees(prev => prev.map(e => e.id === id ? employee : e));
+            return employee;
+        } catch (error) {
+            console.error('Error updating employee:', error);
+            throw error;
+        }
+    };
+
+    const markEmployeeAttendance = async (attendanceData) => {
+        try {
+            const record = await hrAPI.markAttendance(attendanceData);
+            setAttendance(prev => [record, ...prev]);
+            return record;
+        } catch (error) {
+            console.error('Error marking attendance:', error);
+            throw error;
+        }
+    };
+
+    const createLeaveRequest = async (leaveData) => {
+        try {
+            const leave = await hrAPI.createLeaveRequest(leaveData);
+            setLeaveRequests(prev => [leave, ...prev]);
+            return leave;
+        } catch (error) {
+            console.error('Error creating leave request:', error);
+            throw error;
+        }
+    };
+
+    const updateLeaveRequestStatus = async (id, status, approvedBy) => {
+        try {
+            const leave = await hrAPI.updateLeaveRequest(id, { status, approvedBy });
+            setLeaveRequests(prev => prev.map(l => l.id === id ? leave : l));
+            return leave;
+        } catch (error) {
+            console.error('Error updating leave request:', error);
+            throw error;
+        }
+    };
+
+    const createPayrollEntry = async (payrollData) => {
+        try {
+            const payrollRecord = await hrAPI.createPayroll(payrollData);
+            setPayroll(prev => [payrollRecord, ...prev]);
+            return payrollRecord;
+        } catch (error) {
+            console.error('Error creating payroll:', error);
+            throw error;
+        }
+    };
+
+    const updatePayrollStatus = async (id, status, paymentDate) => {
+        try {
+            const payrollRecord = await hrAPI.updatePayroll(id, { status, paymentDate });
+            setPayroll(prev => prev.map(p => p.id === id ? payrollRecord : p));
+            return payrollRecord;
+        } catch (error) {
+            console.error('Error updating payroll:', error);
+            throw error;
+        }
+    };
+
 
     const value = {
         // Data
@@ -3156,7 +3373,31 @@ export const DataProvider = ({ children }) => {
         // Billing Functions
         addBill,  // API version (new)
         addBillLegacy,  // Legacy helper (old)
-        updateBillStatus
+        updateBillStatus,
+
+        // Blood Bank Functions (API-BACKED)
+        addBloodDonor,
+        recordDonation,
+        createBloodRequest,
+        approveBloodRequest,
+        rejectBloodRequest,
+        updateBloodInventory,
+
+        // Ambulance Functions (API-BACKED)
+        addAmbulance,
+        updateAmbulance,
+        createDispatchRequest,
+        dispatchAmbulanceToRequest,
+        completeAmbulanceTrip,
+
+        // HR Functions (API-BACKED)
+        addEmployee,
+        updateEmployee,
+        markEmployeeAttendance,
+        createLeaveRequest,
+        updateLeaveRequestStatus,
+        createPayrollEntry,
+        updatePayrollStatus
     };
 
     return (
