@@ -237,6 +237,185 @@ export const casesAPI = {
     }
 };
 
+;
+
+// ==================== BLOOD BANK API ====================
+
+export const bloodBankAPI = {
+    // Inventory
+    getInventory: async () => {
+        const response = await api.get('/bloodbank/inventory');
+        return response.data;
+    },
+
+    updateInventory: async (id, data) => {
+        const response = await api.put(`/bloodbank/inventory/${id}`, data);
+        return response.data;
+    },
+
+    initializeInventory: async () => {
+        const response = await api.post('/bloodbank/inventory/initialize');
+        return response.data;
+    },
+
+    // Donors
+    getDonors: async () => {
+        const response = await api.get('/bloodbank/donors');
+        return response.data;
+    },
+
+    addDonor: async (donorData) => {
+        const response = await api.post('/bloodbank/donors', donorData);
+        return response.data;
+    },
+
+    recordDonation: async (donorId) => {
+        const response = await api.post(`/bloodbank/donors/${donorId}/donate`);
+        return response.data;
+    },
+
+    // Requests
+    getRequests: async () => {
+        const response = await api.get('/bloodbank/requests');
+        return response.data;
+    },
+
+    createRequest: async (requestData) => {
+        const response = await api.post('/bloodbank/requests', requestData);
+        return response.data;
+    },
+
+    approveRequest: async (requestId) => {
+        const response = await api.post(`/bloodbank/requests/${requestId}/approve`);
+        return response.data;
+    },
+
+    rejectRequest: async (requestId) => {
+        const response = await api.post(`/bloodbank/requests/${requestId}/reject`);
+        return response.data;
+    }
+};
+
+// ==================== AMBULANCE API ====================
+
+export const ambulanceAPI = {
+    // Fleet
+    getFleet: async () => {
+        const response = await api.get('/ambulance/fleet');
+        return response.data;
+    },
+
+    addAmbulance: async (ambulanceData) => {
+        const response = await api.post('/ambulance/fleet', ambulanceData);
+        return response.data;
+    },
+
+    updateAmbulance: async (id, data) => {
+        const response = await api.put(`/ambulance/fleet/${id}`, data);
+        return response.data;
+    },
+
+    // Requests
+    getRequests: async () => {
+        const response = await api.get('/ambulance/requests');
+        return response.data;
+    },
+
+    createRequest: async (requestData) => {
+        const response = await api.post('/ambulance/requests', requestData);
+        return response.data;
+    },
+
+    dispatchAmbulance: async (requestId, ambulanceId) => {
+        const response = await api.post(`/ambulance/requests/${requestId}/dispatch`, { ambulanceId });
+        return response.data;
+    },
+
+    // Trips
+    getTrips: async () => {
+        const response = await api.get('/ambulance/trips');
+        return response.data;
+    },
+
+    completeTrip: async (tripId, data) => {
+        const response = await api.put(`/ambulance/trips/${tripId}/complete`, data);
+        return response.data;
+    }
+};
+
+// ==================== HR API ====================
+
+export const hrAPI = {
+    // Employees
+    getEmployees: async () => {
+        const response = await api.get('/hr/employees');
+        return response.data;
+    },
+
+    getEmployee: async (id) => {
+        const response = await api.get(`/hr/employees/${id}`);
+        return response.data;
+    },
+
+    addEmployee: async (employeeData) => {
+        const response = await api.post('/hr/employees', employeeData);
+        return response.data;
+    },
+
+    updateEmployee: async (id, data) => {
+        const response = await api.put(`/hr/employees/${id}`, data);
+        return response.data;
+    },
+
+    // Attendance
+    getAttendance: async (params = {}) => {
+        const response = await api.get('/hr/attendance', { params });
+        return response.data;
+    },
+
+    markAttendance: async (attendanceData) => {
+        const response = await api.post('/hr/attendance', attendanceData);
+        return response.data;
+    },
+
+    updateAttendance: async (id, data) => {
+        const response = await api.put(`/hr/attendance/${id}`, data);
+        return response.data;
+    },
+
+    // Leave Requests
+    getLeaveRequests: async () => {
+        const response = await api.get('/hr/leaves');
+        return response.data;
+    },
+
+    createLeaveRequest: async (leaveData) => {
+        const response = await api.post('/hr/leaves', leaveData);
+        return response.data;
+    },
+
+    updateLeaveRequest: async (id, data) => {
+        const response = await api.put(`/hr/leaves/${id}`, data);
+        return response.data;
+    },
+
+    // Payroll
+    getPayroll: async (params = {}) => {
+        const response = await api.get('/hr/payroll', { params });
+        return response.data;
+    },
+
+    createPayroll: async (payrollData) => {
+        const response = await api.post('/hr/payroll', payrollData);
+        return response.data;
+    },
+
+    updatePayroll: async (id, data) => {
+        const response = await api.put(`/hr/payroll/${id}`, data);
+        return response.data;
+    }
+};
+
 // Export the api instance for custom calls
 export default api;
 

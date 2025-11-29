@@ -15,6 +15,9 @@ const serviceRoutes = require('./routes/services');
 const queueRoutes = require('./routes/queue');
 const caseRoutes = require('./routes/cases');
 const inventoryRoutes = require('./routes/inventory');
+const bloodBankRoutes = require('./routes/bloodbank');
+const ambulanceRoutes = require('./routes/ambulance');
+const hrRoutes = require('./routes/hr');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -46,6 +49,9 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/queue', queueRoutes);
 app.use('/api/cases', caseRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/bloodbank', bloodBankRoutes);
+app.use('/api/ambulance', ambulanceRoutes);
+app.use('/api/hr', hrRoutes);
 
 // Start Server
 app.listen(PORT, () => {

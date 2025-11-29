@@ -37,6 +37,16 @@ model Hospital {
   wards        Ward[]
   beds         Bed[]
   inventoryItems InventoryItem[]
+  bloodInventory BloodInventory[]
+  bloodDonors    BloodDonor[]
+  bloodRequests  BloodRequest[]
+  ambulances     Ambulance[]
+  ambulanceRequests AmbulanceRequest[]
+  ambulanceTrips AmbulanceTrip[]
+  employees      Employee[]
+  attendance     Attendance[]
+  leaveRequests  LeaveRequest[]
+  payrolls       Payroll[]
 }
 
 // ==================== USERS & AUTHENTICATION ====================
@@ -369,5 +379,222 @@ model InventoryItem {
   
   @@index([hospitalId])
   @@index([category])
+}
+
+// ==================== BLOOD BANK ====================
+
+model BloodInventory {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  bloodGroup  String   // A+, A-, B+, B-, AB+, AB-, O+, O-
+  units       Int      @default(0)
+  status      String   @default("Good") // Good, Low, Critical
+  lastUpdated DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+
+  @@unique([hospitalId, bloodGroup])
+  @@index([hospitalId])
+}
+
+model BloodDonor {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  donorId     String   @unique // e.g., "D-1001"
+  name        String
+  bloodGroup  String
+  age         Int
+  gender      String
+  contact     String
+  lastDonation DateTime?
+  status      String   @default("Eligible") // Eligible, Ineligible
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+
+  @@index([hospitalId])
+}
+
+model BloodRequest {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  requestId   String   @unique // e.g., "BR-001"
+  patientId   String
+  patientName String
+  bloodGroup  String
+  units       Int
+  urgency     String   // Normal, Urgent, Critical
+  status      String   @default("Pending") // Pending, Approved, Rejected, Completed
+  requestDate DateTime @default(now())
+  doctorName  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+
+  @@index([hospitalId])
+  @@index([status])
+}
+
+// ==================== AMBULANCE ====================
+
+model Ambulance {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  vehicleNumber String @unique
+  type        String   // BLS, ALS, Transport
+  status      String   @default("Available") // Available, On Mission, Maintenance
+  location    String?
+  fuel        Int      @default(100)
+  assignedDriver String?
+  assignedParamedic String?
+  nextMaintenanceDue DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+
+  @@index([hospitalId])
+}
+
+model AmbulanceRequest {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  requestId   String   @unique
+  patientName String
+  pickupLocation String
+  destination String?
+  priority    String   // Low, Medium, High, Critical
+  status      String   @default("Pending") // Pending, Dispatched, Completed, Cancelled
+  contactNumber String?
+  assignedAmbulanceId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+
+  @@index([hospitalId])
+}
+
+model AmbulanceTrip {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  tripId      String   @unique
+  requestId   String
+  ambulanceId String
+  driver      String?
+  paramedic   String?
+  startTime   DateTime
+  endTime     DateTime?
+  distance    Float?
+  status      String   @default("In Progress")
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+
+  @@index([hospitalId])
+}
+
+// ==================== HR & PAYROLL ====================
+
+model Employee {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  employeeId  String   @unique // e.g., "EMP-001"
+  firstName   String
+  lastName    String
+  email       String   @unique
+  phone       String?
+  role        String   // Doctor, Nurse, Admin, Staff
+  department  String
+  status      String   @default("Active") // Active, On Leave, Terminated
+  joinDate    DateTime
+  salary      Float
+  bankAccount String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  attendance  Attendance[]
+  payroll     Payroll[]
+  leaveRequests LeaveRequest[]
+
+  @@index([hospitalId])
+  @@index([department])
+}
+
+model Attendance {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  employeeId  String
+  date        DateTime
+  status      String   // Present, Absent, Late, Half-day
+  checkIn     DateTime?
+  checkOut    DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  employee    Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([hospitalId])
+  @@index([employeeId])
+  @@index([date])
+}
+
+model LeaveRequest {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  employeeId  String
+  type        String   // Sick, Vacation, Personal
+  startDate   DateTime
+  endDate     DateTime
+  reason      String?
+  status      String   @default("Pending") // Pending, Approved, Rejected
+  approvedBy  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  employee    Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([hospitalId])
+  @@index([employeeId])
+}
+
+model Payroll {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  employeeId  String
+  month       String   // e.g., "2024-01"
+  basicSalary Float
+  allowances  Float    @default(0)
+  deductions  Float    @default(0)
+  netSalary   Float
+  status      String   @default("Pending") // Pending, Processed, Paid
+  paymentDate DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  employee    Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([hospitalId])
+  @@index([employeeId])
+  @@index([month])
 }
 
