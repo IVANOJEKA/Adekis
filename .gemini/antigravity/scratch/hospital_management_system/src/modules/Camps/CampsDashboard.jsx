@@ -4,7 +4,7 @@ import { Tent, MapPin, Calendar, Users, Plus, Search, UserPlus, Stethoscope, Arr
 import MedicalConsultationForm from '../Doctor/components/MedicalConsultationForm';
 
 const CampsDashboard = () => {
-    const { camps, setCamps, patients, setPatients, financialRecords, setFinancialRecords } = useData();
+    const { camps, setCamps, patients, addPatient, financialRecords, setFinancialRecords } = useData();
     const [selectedCamp, setSelectedCamp] = useState(null);
     const [showRegisterModal, setShowRegisterModal] = useState(false);
     const [showConsultationModal, setShowConsultationModal] = useState(false);
@@ -12,7 +12,7 @@ const CampsDashboard = () => {
     const [selectedPatientId, setSelectedPatientId] = useState(null);
 
     // Filter patients for the selected camp
-    const campPatients = selectedCamp ? patients.filter(p => p.campId === selectedCamp.id) : [];
+    const campPatients = selectedCamp ? patients.filter(p => (p.details?.campId || p.campId) === selectedCamp.id) : [];
 
     // Auto-update camp status based on dates
     useEffect(() => {
@@ -71,14 +71,18 @@ const CampsDashboard = () => {
         setShowScheduleCampModal(false);
     };
 
-    const handleRegisterPatient = (e) => {
+    const handleRegisterPatient = async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
+
+        // Calculate DOB from Age
+        const age = parseInt(formData.get('age') || 0);
+        const birthYear = new Date().getFullYear() - age;
+        const dateOfBirth = new Date(birthYear, 0, 1).toISOString();
+
         const newPatient = {
-            id: `P-${Date.now()}`,
-            campId: selectedCamp.id,
             name: formData.get('name'),
-            age: parseInt(formData.get('age')),
+            dateOfBirth: dateOfBirth,
             gender: formData.get('gender'),
             phone: formData.get('phone'),
             email: formData.get('email') || '',
@@ -86,23 +90,32 @@ const CampsDashboard = () => {
             bloodGroup: formData.get('bloodGroup') || '',
             allergies: formData.get('allergies') ? formData.get('allergies').split(',').map(a => a.trim()) : [],
             emergencyContact: formData.get('emergencyContact') || '',
-            registrationDate: new Date().toISOString().split('T')[0],
-            status: 'Active',
-            registeredAt: selectedCamp.name
+            patientCategory: 'Camp',
+            details: {
+                campId: selectedCamp.id,
+                registeredAt: selectedCamp.name,
+                age: formData.get('age') // Store original age
+            },
+            status: 'Active'
         };
 
-        setPatients([...patients, newPatient]);
+        const result = await addPatient(newPatient);
 
-        // Update camp registered count
-        const updatedCamps = camps.map(c =>
-            c.id === selectedCamp.id
-                ? { ...c, registeredPatients: c.registeredPatients + 1 }
-                : c
-        );
-        setCamps(updatedCamps);
-        setSelectedCamp({ ...selectedCamp, registeredPatients: selectedCamp.registeredPatients + 1 });
+        if (result.success) {
+            // Update camp registered count
+            const updatedCamps = camps.map(c =>
+                c.id === selectedCamp.id
+                    ? { ...c, registeredPatients: c.registeredPatients + 1 }
+                    : c
+            );
+            setCamps(updatedCamps);
+            setSelectedCamp({ ...selectedCamp, registeredPatients: selectedCamp.registeredPatients + 1 });
 
-        setShowRegisterModal(false);
+            setShowRegisterModal(false);
+            alert(`Patient Registered for Camp! ID: ${result.patient.patientId || result.patient.id}`);
+        } else {
+            alert(`Failed to register patient: ${result.error}`);
+        }
     };
 
     const handleStartConsultation = (patientId) => {
@@ -132,7 +145,7 @@ const CampsDashboard = () => {
 
     // Calculate camp statistics
     const getCampStats = (camp) => {
-        const campPats = patients.filter(p => p.campId === camp.id);
+        const campPats = patients.filter(p => (p.details?.campId || p.campId) === camp.id);
         const campFinancials = financialRecords.filter(f => f.campId === camp.id);
         const revenue = campFinancials.reduce((sum, f) => sum + f.amount, 0);
 
@@ -207,9 +220,9 @@ const CampsDashboard = () => {
                                 {campPatients.length > 0 ? (
                                     campPatients.map((patient) => (
                                         <tr key={patient.id} className="hover:bg-slate-50 transition-colors">
-                                            <td className="px-6 py-4 font-medium text-slate-900">{patient.id}</td>
+                                            <td className="px-6 py-4 font-medium text-slate-900">{patient.patientId || patient.id}</td>
                                             <td className="px-6 py-4 text-slate-800">{patient.name}</td>
-                                            <td className="px-6 py-4 text-slate-600">{patient.age} / {patient.gender}</td>
+                                            <td className="px-6 py-4 text-slate-600">{patient.details?.age || patient.age || 'N/A'} / {patient.gender}</td>
                                             <td className="px-6 py-4 text-slate-600">{patient.phone || 'N/A'}</td>
                                             <td className="px-6 py-4 text-slate-600">{patient.bloodGroup || 'Unknown'}</td>
                                             <td className="px-6 py-4 text-right">

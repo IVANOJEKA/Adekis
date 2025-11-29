@@ -4,7 +4,7 @@ import { useData } from '../../../context/DataContext';
 import { generatePatientId } from '../../../utils/patientIdUtils';
 
 const EmergencyCare = () => {
-    const { patients, setPatients } = useData();
+    const { patients, addPatient } = useData();
     const [showModal, setShowModal] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
@@ -19,39 +19,52 @@ const EmergencyCare = () => {
     // Auto-generate ID for preview
     const nextId = generatePatientId(patients, 'emergency');
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
+        // Calculate DOB if age is a number
+        let dateOfBirth = new Date('1900-01-01').toISOString();
+        if (formData.age && !isNaN(formData.age)) {
+            const birthYear = new Date().getFullYear() - parseInt(formData.age);
+            dateOfBirth = new Date(birthYear, 0, 1).toISOString();
+        }
+
         const newPatient = {
-            id: nextId,
             name: formData.name || 'Unknown Patient',
-            age: formData.age || 'Unknown',
+            dateOfBirth: dateOfBirth,
             gender: formData.gender,
             phone: formData.contact || 'N/A',
-            type: 'Emergency',
-            category: 'Emergency',
-            status: 'Active',
-            triageLevel: formData.triageLevel,
-            chiefComplaint: formData.chiefComplaint,
-            registrationDate: new Date().toISOString().split('T')[0],
-            admissionTime: new Date().toLocaleTimeString()
+            patientCategory: 'Emergency',
+            details: {
+                triageLevel: formData.triageLevel,
+                chiefComplaint: formData.chiefComplaint,
+                broughtBy: formData.broughtBy,
+                admissionTime: new Date().toLocaleTimeString(),
+                age: formData.age // Store original age string
+            },
+            status: 'Active'
         };
 
-        setPatients([...patients, newPatient]);
-        setShowModal(false);
-        setFormData({
-            name: '',
-            age: '',
-            gender: 'Male',
-            triageLevel: 'Emergency',
-            chiefComplaint: '',
-            broughtBy: '',
-            contact: ''
-        });
-        alert(`Emergency Patient Registered! ID: ${newPatient.id}`);
+        const result = await addPatient(newPatient);
+
+        if (result.success) {
+            setShowModal(false);
+            setFormData({
+                name: '',
+                age: '',
+                gender: 'Male',
+                triageLevel: 'Emergency',
+                chiefComplaint: '',
+                broughtBy: '',
+                contact: ''
+            });
+            alert(`Emergency Patient Registered! ID: ${result.patient.patientId || result.patient.id}`);
+        } else {
+            alert(`Failed to register patient: ${result.error}`);
+        }
     };
 
-    const emergencyPatients = patients.filter(p => p.type === 'Emergency' || p.id.startsWith('E-'));
+    const emergencyPatients = patients.filter(p => p.patientCategory === 'Emergency');
 
     return (
         <div className="space-y-6">
@@ -97,21 +110,21 @@ const EmergencyCare = () => {
                         <tbody className="divide-y divide-slate-100">
                             {emergencyPatients.length > 0 ? emergencyPatients.map((patient) => (
                                 <tr key={patient.id} className="hover:bg-slate-50 transition-colors">
-                                    <td className="p-4 font-bold text-red-600">{patient.id}</td>
+                                    <td className="p-4 font-bold text-red-600">{patient.patientId || patient.id}</td>
                                     <td className="p-4 text-slate-600 flex items-center gap-2">
                                         <Clock size={14} />
-                                        {patient.admissionTime || new Date().toLocaleTimeString()}
+                                        {patient.details?.admissionTime || patient.admissionTime || new Date().toLocaleTimeString()}
                                     </td>
                                     <td className="p-4">
                                         <div className="font-medium text-slate-800">{patient.name}</div>
-                                        <div className="text-xs text-slate-500">{patient.age} / {patient.gender}</div>
+                                        <div className="text-xs text-slate-500">{patient.details?.age || patient.age || 'Unknown'} / {patient.gender}</div>
                                     </td>
-                                    <td className="p-4 text-slate-600">{patient.chiefComplaint || '-'}</td>
+                                    <td className="p-4 text-slate-600">{patient.details?.chiefComplaint || patient.chiefComplaint || '-'}</td>
                                     <td className="p-4">
-                                        <span className={`px-2 py-1 rounded text-xs font-bold ${patient.triageLevel === 'Emergency' ? 'bg-red-100 text-red-700' :
-                                                patient.triageLevel === 'Urgent' ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700'
+                                        <span className={`px-2 py-1 rounded text-xs font-bold ${(patient.details?.triageLevel || patient.triageLevel) === 'Emergency' ? 'bg-red-100 text-red-700' :
+                                                (patient.details?.triageLevel || patient.triageLevel) === 'Urgent' ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700'
                                             }`}>
-                                            {patient.triageLevel || 'Emergency'}
+                                            {patient.details?.triageLevel || patient.triageLevel || 'Emergency'}
                                         </span>
                                     </td>
                                     <td className="p-4">

@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useData } from '../context/DataContext';
 import { LogIn, Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 const StaffLogin = () => {
     const navigate = useNavigate();
     const { login } = useAuth();
-    const { usersData } = useData();
 
     const [formData, setFormData] = useState({
         email: '',
@@ -25,7 +23,7 @@ const StaffLogin = () => {
         setError('');
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError('');
@@ -37,8 +35,8 @@ const StaffLogin = () => {
             return;
         }
 
-        // Attempt login
-        const result = login(formData.email, formData.password, usersData);
+        // Attempt login (now async with backend)
+        const result = await login(formData.email, formData.password);
 
         if (result.success) {
             // Redirect to dashboard

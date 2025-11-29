@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 
 const MedicalConsultationForm = ({ patientId, onClose, onSave }) => {
-    const { patients, clinicalRecords, setClinicalRecords, triageQueue, inventory, prescriptions, setPrescriptions, financialRecords, setFinancialRecords } = useData();
+    const { patients, clinicalRecords, setClinicalRecords, triageQueue, inventory, prescriptions, addPrescription, addBill } = useData();
     const patient = patients.find(p => p.id === patientId);
 
     // State for searchable medicine dropdown
@@ -267,27 +267,31 @@ const MedicalConsultationForm = ({ patientId, onClose, onSave }) => {
                 dispensedBy: ''
             };
 
-            setPrescriptions(prev => [newPrescription, ...prev]);
-
-            // Create automatic financial record for the prescription
-            const newFinancialRecord = {
-                id: `FIN-${Date.now()}`,
-                type: 'Prescription',
-                patientId: formData.patientId,
-                patientName: formData.patientName,
-                prescriptionId: prescriptionId,
-                description: `Prescription ${prescriptionId} - ${formData.medications.length} medication(s)`,
-                amount: prescriptionTotal,
-                status: 'Unpaid',
-                paymentMethod: '',
-                createdAt: new Date().toISOString(),
-                paidAt: null,
-                department: 'Pharmacy',
-                invoiceNumber: `INV-${Date.now()}`,
-                notes: `Prescribed by ${formData.doctorName}`
+            // Save prescription via API
+            const prescriptionData = {
+                patientId: patient.id,
+                doctorId: 'doctor-id',  // TODO: Get from current user context
+                medications: newPrescription.prescribedMedication,
+                diagnosis: formData.provisionalDiagnosis,
+                instructions: formData.treatmentPlan
             };
 
-            setFinancialRecords(prev => [...prev, newFinancialRecord]);
+            const prescriptionResult = await addPrescription(prescriptionData);
+
+            if (prescriptionResult.success) {
+                // Create automatic bill for the prescription
+                await addBill({
+                    patientId: patient.id,
+                    patientName: formData.patientName,
+                    type: 'Prescription',
+                    category: 'Pharmacy',
+                    description: `Prescription - ${formData.medications.length} medication(s)`,
+                    amount: prescriptionTotal
+                });
+            } else {
+                alert(`Failed to save prescription: ${prescriptionResult.error}`);
+                return;
+            }
         }
 
         if (onSave) onSave(consultationRecord);

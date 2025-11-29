@@ -22,7 +22,7 @@ import AddBillModal from './components/AddBillModal';
 import PatientBillModal from './components/PatientBillModal';
 
 const ReceptionDashboard = () => {
-    const { patients, addBill, financialRecords } = useData();
+    const { patients, addBill, financialRecords, addPatient } = useData();
     const [activeTab, setActiveTab] = useState('overview');
 
     // Walk-in State
@@ -39,9 +39,9 @@ const ReceptionDashboard = () => {
     const [showViewBillModal, setShowViewBillModal] = useState(false);
     const [selectedBillingPatient, setSelectedBillingPatient] = useState(null);
 
-    // Filter walk-in patients (ID starts with 'W-')
+    // Filter walk-in patients (Category is 'Walk-in')
     const walkInPatients = patients
-        .filter(p => p.id.startsWith('W-'))
+        .filter(p => p.patientCategory === 'Walk-in')
         .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.id.toLowerCase().includes(searchTerm.toLowerCase()))
         .map(p => {
             // Calculate total bill for this patient
@@ -58,18 +58,33 @@ const ReceptionDashboard = () => {
         });
 
     // Handlers
-    const handleWalkInSubmit = (formData) => {
-        const newPatient = {
-            id: `W-${Math.floor(Math.random() * 10000)}`,
+    const handleWalkInSubmit = async (formData) => {
+        // Calculate DOB from Age (assuming age is provided)
+        const age = parseInt(formData.age || 0);
+        const birthYear = new Date().getFullYear() - age;
+        const dateOfBirth = new Date(birthYear, 0, 1).toISOString();
+
+        const patientData = {
             name: formData.name,
+            dateOfBirth: dateOfBirth,
+            gender: formData.gender || 'Unknown',
             phone: formData.phone,
-            visitDate: new Date().toLocaleDateString(),
-            status: 'WAITING',
-            ...formData
+            address: formData.address || 'N/A',
+            patientCategory: 'Walk-in', // Use this to identify walk-ins
+            status: 'WAITING'
         };
 
+        const result = await addPatient(patientData);
+
+        if (!result.success) {
+            alert(`Failed to register walk-in patient: ${result.error}`);
+            return;
+        }
+
+        const newPatient = result.patient;
+
         addBill({
-            patientId: newPatient.id,
+            patientId: newPatient.patientId, // Use readable ID
             patientName: newPatient.name,
             amount: 50000,
             type: 'Consultation',

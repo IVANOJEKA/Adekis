@@ -11,7 +11,7 @@ const MaternityDashboard = () => {
         maternityPatients,
         setMaternityPatients,
         patients,
-        setPatients,
+        addPatient,
         ancVisits,
         setANCVisits,
         deliveryRecords,
@@ -74,15 +74,18 @@ const MaternityDashboard = () => {
     }, [maternityPatients, statusFilter, searchTerm]);
 
     // Handle patient registration with HMS integration
-    const handleRegisterPatient = (formData) => {
-        // Generate IDs
+    const handleRegisterPatient = async (formData) => {
+        // Generate maternity ID
         const matId = `MAT-${String(maternityPatients.length + 1).padStart(3, '0')}`;
-        const patId = `P-${String(patients.length + 1).padStart(3, '0')}`;
+
+        // Calculate DOB from age
+        const birthYear = new Date().getFullYear() - parseInt(formData.age || 0);
+        const dateOfBirth = new Date(birthYear, 0, 1).toISOString();
 
         // Create maternity patient record
         const newMaternityPatient = {
             id: matId,
-            patientId: patId,
+            patientId: null, // Will be set after API response
             ...formData,
             emergencyContact: {
                 name: formData.emergencyContactName,
@@ -91,22 +94,37 @@ const MaternityDashboard = () => {
             }
         };
 
-        // Create general patient record for HMS integration
-        const newPatient = {
-            id: patId,
+        // Create general patient record for HMS integration via API
+        const patientData = {
             name: formData.patientName,
-            age: formData.age,
+            dateOfBirth: dateOfBirth,
             gender: 'Female',
             phone: formData.phoneNumber,
-            lastVisit: new Date().toISOString().split('T')[0],
             patientCategory: 'Maternity',
             bloodGroup: formData.bloodGroup,
+            details: {
+                maternityId: matId,
+                edd: formData.edd,
+                lmp: formData.lmp,
+                gravida: formData.gravida,
+                para: formData.para,
+                currentWeeks: formData.currentWeeks
+            },
             status: 'Active'
         };
 
-        // Update both databases
+        const result = await addPatient(patientData);
+
+        if (!result.success) {
+            alert(`Failed to register patient: ${result.error}`);
+            return;
+        }
+
+        // Update maternity record with the patient ID from API
+        newMaternityPatient.patientId = result.patient.patientId || result.patient.id;
+
+        // Update maternity database
         setMaternityPatients(prev => [...prev, newMaternityPatient]);
-        setPatients(prev => [...prev, newPatient]);
 
         // Create first ANC visit record
         const firstANCid = `ANC-${String(ancVisits.length + 1).padStart(3, '0')}`;
@@ -135,7 +153,7 @@ const MaternityDashboard = () => {
         setANCVisits(prev => [...prev, firstANCVisit]);
 
         setShowRegistrationModal(false);
-        alert(`Patient registered successfully!\nMaternity ID: ${matId}\nPatient ID: ${patId}\n\nFirst ANC visit scheduled for ${new Date(firstANCVisit.nextVisitDate).toLocaleDateString()}`);
+        alert(`Patient registered successfully!\nMaternity ID: ${matId}\nPatient ID: ${newMaternityPatient.patientId}\n\nFirst ANC visit scheduled for ${new Date(firstANCVisit.nextVisitDate).toLocaleDateString()}`);
     };
 
     const calculateNextANCDate = (currentWeeks) => {

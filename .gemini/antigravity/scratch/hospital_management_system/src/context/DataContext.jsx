@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { patientsAPI } from '../services/api';
 
 const DataContext = createContext();
 
@@ -1909,15 +1910,255 @@ const initialCasesData = [
 
 export const DataProvider = ({ children }) => {
     // Load data from localStorage or use initial data
-    const [patients, setPatients] = useState(() => {
-        const saved = localStorage.getItem('hms_patients');
-        return saved ? JSON.parse(saved) : initialPatientData;
-    });
+    // Load data from localStorage or use initial data
+    const [patients, setPatients] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
+    // Fetch patients from API on mount
+    useEffect(() => {
+        fetchPatients();
+    }, []);
+
+    const fetchPatients = async () => {
+        try {
+            setLoading(true);
+            const data = await patientsAPI.getAll();
+            setPatients(data);
+            setError(null);
+        } catch (err) {
+            console.error("Failed to fetch patients:", err);
+            setError("Failed to load patients. Please try again.");
+            // Fallback to local storage or empty array if API fails (optional, but good for resilience during migration)
+            // For now, we'll just leave it empty or show error
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // CRUD Operations for Patients
+    const addPatient = async (patientData) => {
+        try {
+            const newPatient = await patientsAPI.create(patientData);
+            setPatients(prev => [newPatient, ...prev]);
+            return { success: true, patient: newPatient };
+        } catch (err) {
+            console.error("Failed to add patient:", err);
+            return { success: false, error: err.message };
+        }
+    };
+
+    const updatePatient = async (id, patientData) => {
+        try {
+            const updatedPatient = await patientsAPI.update(id, patientData);
+            setPatients(prev => prev.map(p => p.id === id ? updatedPatient : p));
+            return { success: true, patient: updatedPatient };
+        } catch (err) {
+            console.error("Failed to update patient:", err);
+            return { success: false, error: err.message };
+        }
+    };
+
+    const deletePatient = async (id) => {
+        try {
+            await patientsAPI.delete(id);
+            setPatients(prev => prev.filter(p => p.id !== id));
+            return { success: true };
+        } catch (err) {
+            console.error("Failed to delete patient:", err);
+            return { success: false, error: err.message };
+        }
+    };
+
+    // ==================== APPOINTMENTS (API-BACKED) ====================
+    const [appointments, setAppointments] = useState([]);
+    const [appointmentsLoading, setAppointmentsLoading] = useState(true);
+
+    useEffect(() => {
+        fetchAppointments();
+    }, []);
+
+    const fetchAppointments = async () => {
+        try {
+            setAppointmentsLoading(true);
+            const { appointmentsAPI } = await import('../services/api');
+            const data = await appointmentsAPI.getAll();
+            setAppointments(data);
+        } catch (err) {
+            console.error("Failed to fetch appointments:", err);
+        } finally {
+            setAppointmentsLoading(false);
+        }
+    };
+
+    const addAppointment = async (appointmentData) => {
+        try {
+            const { appointmentsAPI } = await import('../services/api');
+            const newAppointment = await appointmentsAPI.create(appointmentData);
+            setAppointments(prev => [newAppointment, ...prev]);
+            return { success: true, appointment: newAppointment };
+        } catch (err) {
+            console.error("Failed to add appointment:", err);
+            return { success: false, error: err.message };
+        }
+    };
+
+    const updateAppointment = async (id, appointmentData) => {
+        try {
+            const { appointmentsAPI } = await import('../services/api');
+            const updatedAppointment = await appointmentsAPI.update(id, appointmentData);
+            setAppointments(prev => prev.map(a => a.id === id ? updatedAppointment : a));
+            return { success: true, appointment: updatedAppointment };
+        } catch (err) {
+            console.error("Failed to update appointment:", err);
+            return { success: false, error: err.message };
+        }
+    };
+
+    // ==================== BILLS (API-BACKED) ====================
+    const [bills, setBills] = useState([]);
+    const [billsLoading, setBillsLoading] = useState(true);
+
+    useEffect(() => {
+        fetchBills();
+    }, []);
+
+    const fetchBills = async () => {
+        try {
+            setBillsLoading(true);
+            const { billsAPI } = await import('../services/api');
+            const data = await billsAPI.getAll();
+            setBills(data);
+        } catch (err) {
+            console.error("Failed to fetch bills:", err);
+        } finally {
+            setBillsLoading(false);
+        }
+    };
+
+    const addBill = async (billData) => {
+        try {
+            const { billsAPI } = await import('../services/api');
+            const newBill = await billsAPI.create(billData);
+            setBills(prev => [newBill, ...prev]);
+            return { success: true, bill: newBill };
+        } catch (err) {
+            console.error("Failed to add bill:", err);
+            return { success: false, error: err.message };
+        }
+    };
+
+    const updateBill = async (id, billData) => {
+        try {
+            const { billsAPI } = await import('../services/api');
+            const updatedBill = await billsAPI.update(id, billData);
+            setBills(prev => prev.map(b => b.id === id ? updatedBill : b));
+            return { success: true, bill: updatedBill };
+        } catch (err) {
+            console.error("Failed to update bill:", err);
+            return { success: false, error: err.message };
+        }
+    };
+
+    // ==================== QUEUE (API-BACKED) ====================
+    const [queueEntries, setQueueEntries] = useState([]);
+    const [queueLoading, setQueueLoading] = useState(true);
+
+    useEffect(() => {
+        fetchQueue();
+    }, []);
+
+    const fetchQueue = async () => {
+        try {
+            setQueueLoading(true);
+            const { queueAPI } = await import('../services/api');
+            const data = await queueAPI.getAll();
+            setQueueEntries(data);
+        } catch (err) {
+            console.error("Failed to fetch queue:", err);
+        } finally {
+            setQueueLoading(false);
+        }
+    };
+
+    const addQueueEntry = async (queueData) => {
+        try {
+            const { queueAPI } = await import('../services/api');
+            const newEntry = await queueAPI.create(queueData);
+            setQueueEntries(prev => [newEntry, ...prev]);
+            return { success: true, entry: newEntry };
+        } catch (err) {
+            console.error("Failed to add queue entry:", err);
+            return { success: false, error: err.message };
+        }
+    };
+
+    const updateQueueEntry = async (id, queueData) => {
+        try {
+            const { queueAPI } = await import('../services/api');
+            const updatedEntry = await queueAPI.update(id, queueData);
+            setQueueEntries(prev => prev.map(q => q.id === id ? updatedEntry : q));
+            return { success: true, entry: updatedEntry };
+        } catch (err) {
+            console.error("Failed to update queue entry:", err);
+            return { success: false, error: err.message };
+        }
+    };
+
+    // ==================== SERVICES (API-BACKED) ====================
+    const [services, setServices] = useState([]);
+    const [servicesLoading, setServicesLoading] = useState(true);
+
+    useEffect(() => {
+        fetchServices();
+    }, []);
+
+    const fetchServices = async () => {
+        try {
+            setServicesLoading(true);
+            const { servicesAPI } = await import('../services/api');
+            const data = await servicesAPI.getAll();
+            setServices(data);
+        } catch (err) {
+            console.error("Failed to fetch services:", err);
+        } finally {
+            setServicesLoading(false);
+        }
+    };
+
+    const addService = async (serviceData) => {
+        try {
+            const { servicesAPI } = await import('../services/api');
+            const newService = await servicesAPI.create(serviceData);
+            setServices(prev => [newService, ...prev]);
+            return { success: true, service: newService };
+        } catch (err) {
+            console.error("Failed to add service:", err);
+            return { success: false, error: err.message };
+        }
+    };
+
+    const updateService = async (id, serviceData) => {
+        try {
+            const { servicesAPI } = await import('../services/api');
+            const updatedService = await servicesAPI.update(id, serviceData);
+            setServices(prev => prev.map(s => s.id === id ? updatedService : s));
+            return { success: true, service: updatedService };
+        } catch (err) {
+            console.error("Failed to update service:", err);
+            return { success: false, error: err.message };
+        }
+    };
+
+    // Keep existing cases state (will migrate later if needed)
     const [cases, setCases] = useState(() => {
         const saved = localStorage.getItem('hms_cases');
         return saved ? JSON.parse(saved) : initialCasesData;
     });
+
+    // Keep prescriptions from localStorage for now (already exists)
+    // Will be migrated separately to avoid breaking existing functionality
+
 
     const [financialRecords, setFinancialRecords] = useState(() => {
         const saved = localStorage.getItem('hms_financial');
@@ -1985,10 +2226,51 @@ export const DataProvider = ({ children }) => {
         return saved ? JSON.parse(saved) : initialInventoryData;
     });
 
-    const [prescriptions, setPrescriptions] = useState(() => {
-        const saved = localStorage.getItem('hms_prescriptions');
-        return saved ? JSON.parse(saved) : initialPrescriptionData;
-    });
+    // ==================== PRESCRIPTIONS (API-BACKED) ====================
+    const [prescriptions, setPrescriptions] = useState([]);
+    const [prescriptionsLoading, setPrescriptionsLoading] = useState(true);
+
+    useEffect(() => {
+        fetchPrescriptions();
+    }, []);
+
+    const fetchPrescriptions = async () => {
+        try {
+            setPrescriptionsLoading(true);
+            const { prescriptionsAPI } = await import('../services/api');
+            const data = await prescriptionsAPI.getAll();
+            setPrescriptions(data);
+        } catch (err) {
+            console.error("Failed to fetch prescriptions:", err);
+        } finally {
+            setPrescriptionsLoading(false);
+        }
+    };
+
+    const addPrescription = async (prescriptionData) => {
+        try {
+            const { prescriptionsAPI } = await import('../services/api');
+            const newPrescription = await prescriptionsAPI.create(prescriptionData);
+            setPrescriptions(prev => [newPrescription, ...prev]);
+            return { success: true, prescription: newPrescription };
+        } catch (err) {
+            console.error("Failed to add prescription:", err);
+            return { success: false, error: err.message };
+        }
+    };
+
+    const updatePrescription = async (id, prescriptionData) => {
+        try {
+            const { prescriptionsAPI } = await import('../services/api');
+            const updatedPrescription = await prescriptionsAPI.update(id, prescriptionData);
+            setPrescriptions(prev => prev.map(p => p.id === id ? updatedPrescription : p));
+            return { success: true, prescription: updatedPrescription };
+        } catch (err) {
+            console.error("Failed to update prescription:", err);
+            return { success: false, error: err.message };
+        }
+    };
+
 
     const [suppliers, setSuppliers] = useState(() => {
         const saved = localStorage.getItem('hms_suppliers');
@@ -2201,17 +2483,10 @@ export const DataProvider = ({ children }) => {
         return saved ? JSON.parse(saved) : [];
     });
 
-    // Queue Management State
-    const [queueEntries, setQueueEntries] = useState(() => {
-        const saved = localStorage.getItem('hms_queue_entries');
-        return saved ? JSON.parse(saved) : initialQueueEntriesData;
-    });
+    // Queue Management State - NOW USING API (see lines ~2064)
+    // Appointments State - NOW USING API (see lines ~1974)
+    // Bills - NOW USING API (see lines ~2019)
 
-    // Appointments State
-    const [appointments, setAppointments] = useState(() => {
-        const saved = localStorage.getItem('hms_appointments');
-        return saved ? JSON.parse(saved) : initialAppointmentsData;
-    });
 
     // Admin Module State - Audit & Security
     const initialAuditLogs = [
@@ -2316,7 +2591,7 @@ export const DataProvider = ({ children }) => {
 
 
 
-    useEffect(() => { localStorage.setItem('hms_patients', JSON.stringify(patients)); }, [patients]);
+    // useEffect(() => { localStorage.setItem('hms_patients', JSON.stringify(patients)); }, [patients]);
     useEffect(() => { localStorage.setItem('hms_financial', JSON.stringify(financialRecords)); }, [financialRecords]);
     useEffect(() => { localStorage.setItem('hms_clinical', JSON.stringify(clinicalRecords)); }, [clinicalRecords]);
     useEffect(() => { localStorage.setItem('hms_users', JSON.stringify(users)); }, [users]);
@@ -2605,8 +2880,8 @@ export const DataProvider = ({ children }) => {
         total: patients.length + financialRecords.length + clinicalRecords.length + users.length + insuranceRecords.length + servicesData.length + debtRecords.length + walletRecords.length + wards.length + beds.length + admissions.length + inventory.length + prescriptions.length + camps.length
     });
 
-    // Billing Helper Functions
-    const addBill = (billData) => {
+    // Billing Helper Functions (LEGACY - for backward compatibility)
+    const addBillLegacy = (billData) => {
         const newBill = {
             id: `INV-${Date.now()}`,
             date: new Date().toISOString(),
@@ -2652,7 +2927,14 @@ export const DataProvider = ({ children }) => {
         labOrders,
         labInventory,
         // Setters
-        setPatients,
+        // Setters & CRUD
+        setPatients, // Keep for backward compatibility if needed, but prefer addPatient/etc.
+        addPatient,
+        updatePatient,
+        deletePatient,
+        fetchPatients,
+        loading,
+        error,
         setFinancialRecords,
         setClinicalRecords,
         setUsers,
@@ -2757,13 +3039,45 @@ export const DataProvider = ({ children }) => {
         triageQueue,
         setTriageQueue,
 
-        // Queue Management Data
+        // Queue Management Data (API-BACKED)
         queueEntries,
         setQueueEntries,
+        addQueueEntry,
+        updateQueueEntry,
+        fetchQueue,
+        queueLoading,
 
-        // Appointments Data
+        // Appointments Data (API-BACKED)
         appointments,
         setAppointments,
+        addAppointment,
+        updateAppointment,
+        fetchAppointments,
+        appointmentsLoading,
+
+        // Bills/Financial (API-BACKED)
+        bills,
+        setBills,
+        addBill: addBill, // API version, shadows old helper
+        updateBill,
+        fetchBills,
+        billsLoading,
+
+        // Services (API-BACKED)
+        services,
+        setServices,
+        addService,
+        updateService,
+        fetchServices,
+        servicesLoading,
+
+        // Prescriptions (API-BACKED)
+        prescriptions,
+        setPrescriptions,
+        addPrescription,
+        updatePrescription,
+        fetchPrescriptions,
+        prescriptionsLoading,
 
         // Blood Bank Data
         bloodInventory, setBloodInventory,
@@ -2801,7 +3115,8 @@ export const DataProvider = ({ children }) => {
         setSystemSettings,
 
         // Billing Functions
-        addBill,
+        addBill,  // API version (new)
+        addBillLegacy,  // Legacy helper (old)
         updateBillStatus
     };
 

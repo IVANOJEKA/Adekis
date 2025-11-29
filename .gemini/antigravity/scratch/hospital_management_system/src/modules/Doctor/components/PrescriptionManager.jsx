@@ -3,7 +3,7 @@ import { FileText, Plus, Search, Printer, Send, Trash2, X } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
 
 const PrescriptionManager = ({ triggerNewPrescription }) => {
-    const { patients = [], inventory = [], prescriptions = [], setPrescriptions } = useData();
+    const { patients = [], inventory = [], prescriptions = [], addPrescription } = useData();
     const [showModal, setShowModal] = useState(false);
     const [showPrintModal, setShowPrintModal] = useState(false);
     const [selectedPrescription, setSelectedPrescription] = useState(null);
@@ -77,24 +77,27 @@ const PrescriptionManager = ({ triggerNewPrescription }) => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        const newPrescription = {
-            id: `RX-${Date.now().toString().slice(-4)}`,
+        // Save prescription via API
+        const prescriptionData = {
             patientId: formData.patientId,
-            patientName: formData.patientName,
-            doctor: 'Dr. Sarah Wilson',
-            date: new Date().toLocaleString(),
-            status: 'Pending',
+            doctorId: 'doctor-id',
             medications: formData.medications,
-            notes: formData.notes
+            instructions: formData.notes
         };
-        setPrescriptions([newPrescription, ...prescriptions]);
-        setShowModal(false);
-        setFormData({
-            patientId: '',
-            patientName: '',
-            medications: [{ medicineId: '', name: '', dosage: '', frequency: '', duration: '' }],
-            notes: ''
-        });
+
+        const result = await addPrescription(prescriptionData);
+
+        if (result.success) {
+            setShowModal(false);
+            setFormData({
+                patientId: '',
+                patientName: '',
+                medications: [{ medicineId: '', name: '', dosage: '', frequency: '', duration: '' }],
+                notes: ''
+            });
+        } else {
+            alert(`Failed to create prescription: ${result.error}`);
+        }
     };
 
     const handlePrint = (prescription) => {

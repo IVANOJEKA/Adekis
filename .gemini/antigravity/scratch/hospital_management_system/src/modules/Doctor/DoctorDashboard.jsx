@@ -37,7 +37,7 @@ class ErrorBoundary extends React.Component {
 }
 
 const DoctorDashboard = () => {
-    const { patients, setPatients, queueEntries, setQueueEntries } = useData();
+    const { patients, updatePatient, queueEntries, setQueueEntries } = useData();
     const [activeTab, setActiveTab] = useState('patient-queue');
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [selectedPatient, setSelectedPatient] = useState(null);
@@ -114,17 +114,19 @@ const DoctorDashboard = () => {
         setShowCategoryModal(true);
     };
 
-    const handleSaveCategory = (e) => {
+    const handleSaveCategory = async (e) => {
         e.preventDefault();
 
-        setPatients(prev => prev.map(p =>
-            p.id === categoryFormData.patientId
-                ? { ...p, patientCategory: categoryFormData.category }
-                : p
-        ));
+        const result = await updatePatient(categoryFormData.patientId, {
+            patientCategory: categoryFormData.category
+        });
 
-        setShowCategoryModal(false);
-        setSelectedPatient(null);
+        if (result.success) {
+            setShowCategoryModal(false);
+            setSelectedPatient(null);
+        } else {
+            alert(`Failed to update patient category: ${result.error}`);
+        }
     };
 
     const handleOpenConsultationForm = (patientId) => {

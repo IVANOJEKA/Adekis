@@ -78,6 +78,7 @@ export const AuthProvider = ({ children }) => {
                     // Session expired
                     localStorage.removeItem('hms_auth_user');
                     localStorage.removeItem('hms_auth_time');
+                    localStorage.removeItem('hms_auth_token');
                 }
             } catch (error) {
                 console.error('Error loading user session:', error);
@@ -86,40 +87,44 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
     }, []);
 
-    const login = (email, password, users) => {
-        // Find user by email
-        const user = users.find(u => u.email === email && u.status === 'Active');
+    const login = async (email, password) => {
+        try {
+            // Call backend API
+            const { authAPI } = await import('../services/api');
+            const response = await authAPI.login(email, password);
 
-        if (!user) {
-            return { success: false, error: 'Invalid email or user is inactive' };
+            // Create user session from backend response
+            const userSession = {
+                id: response.user.id,
+                name: response.user.name,
+                email: response.user.email,
+                role: response.user.role,
+                department: response.user.department,
+                hospitalId: response.user.hospitalId,
+                permissions: response.user.permissions || ROLE_PERMISSIONS[response.user.role] || []
+            };
+
+            setCurrentUser(userSession);
+            setIsAuthenticated(true);
+
+            // Save to localStorage (token already saved by authAPI)
+            localStorage.setItem('hms_auth_user', JSON.stringify(userSession));
+            localStorage.setItem('hms_auth_time', new Date().getTime().toString());
+
+            return { success: true, user: userSession };
+        } catch (error) {
+            console.error('Login error:', error);
+            return {
+                success: false,
+                error: error.response?.data?.error || 'Login failed. Please check your credentials.'
+            };
         }
-
-        // Check password (in production, this should be hashed)
-        if (user.password !== password) {
-            return { success: false, error: 'Invalid password' };
-        }
-
-        // Create user session
-        const userSession = {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            department: user.department,
-            permissions: user.permissions || ROLE_PERMISSIONS[user.role] || []
-        };
-
-        setCurrentUser(userSession);
-        setIsAuthenticated(true);
-
-        // Save to localStorage
-        localStorage.setItem('hms_auth_user', JSON.stringify(userSession));
-        localStorage.setItem('hms_auth_time', new Date().getTime().toString());
-
-        return { success: true, user: userSession };
     };
 
     const logout = () => {
+        const { authAPI } = require('../services/api');
+        authAPI.logout();
+
         setCurrentUser(null);
         setIsAuthenticated(false);
         localStorage.removeItem('hms_auth_user');

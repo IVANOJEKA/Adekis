@@ -1,0 +1,373 @@
+// Prisma Schema for Adekis Hospital Management System
+// Multi-Tenancy Support: Each hospital has isolated data
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== MULTI-TENANCY ====================
+
+model Hospital {
+  id          String   @id @default(uuid())
+  name        String
+  subdomain   String   @unique  // e.g., "st-marys" for st-marys.adekis.com
+  address     String?
+  phone       String?
+  email       String?
+  logo        String?
+  status      String   @default("active")  // active, suspended, inactive
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  users       User[]
+  patients    Patient[]
+  appointments Appointment[]
+  prescriptions Prescription[]
+  labTests     LabTest[]
+  bills        Bill[]
+  services     Service[]
+  queueEntries QueueEntry[]
+  cases        Case[]
+  wards        Ward[]
+  beds         Bed[]
+  inventoryItems InventoryItem[]
+}
+
+// ==================== USERS & AUTHENTICATION ====================
+
+model User {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  email       String   @unique
+  passwordHash String
+  name        String
+  role        String   // Doctor, Nurse, Administrator, Pharmacist, etc.
+  department  String?
+  phone       String?
+  status      String   @default("active")  // active, inactive
+  permissions String[] // Array of permission strings
+  lastLogin   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  
+  @@index([hospitalId])
+  @@index([email])
+}
+
+// ==================== PATIENTS ====================
+
+model Patient {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  patientId   String   @unique  // e.g., "PAT-00123"
+  name        String
+  dateOfBirth DateTime
+  gender      String
+  phone       String?
+  email       String?
+  address     String?
+  bloodGroup  String?
+  allergies   String[] // Array of allergy strings
+  emergencyContact String?
+  emergencyPhone   String?
+  patientCategory  String?  // OPD, IPD
+  insuranceProvider String?
+  insurancePolicyNo String?
+  parentName      String?
+  weight          String?
+  height          String?
+  details         Json?    // For dynamic fields like Maternity/Emergency data
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  appointments Appointment[]
+  prescriptions Prescription[]
+  labTests     LabTest[]
+  medicalRecords MedicalRecord[]
+  
+  @@index([hospitalId])
+  @@index([patientId])
+}
+
+// ==================== APPOINTMENTS ====================
+
+model Appointment {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  patientId   String
+  doctorId    String
+  appointmentDate DateTime
+  appointmentTime String
+  type        String   // Consultation, Follow-up, Emergency, etc.
+  status      String   @default("scheduled")  // scheduled, completed, cancelled
+  reason      String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  patient     Patient @relation(fields: [patientId], references: [id])
+  
+  @@index([hospitalId])
+  @@index([patientId])
+  @@index([appointmentDate])
+}
+
+// ==================== PRESCRIPTIONS ====================
+
+model Prescription {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  patientId   String
+  doctorId    String
+  prescriptionId String @unique  // e.g., "RX-00456"
+  medications Json     // Array of medication objects
+  diagnosis   String?
+  instructions String?
+  status      String   @default("pending")  // pending, dispensed, cancelled
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  patient     Patient @relation(fields: [patientId], references: [id])
+  
+  @@index([hospitalId])
+  @@index([patientId])
+  @@index([prescriptionId])
+}
+
+// ==================== LABORATORY ====================
+
+model LabTest {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  patientId   String
+  testId      String   @unique  // e.g., "LAB-00789"
+  testName    String
+  testType    String
+  orderedBy   String
+  status      String   @default("pending")  // pending, in-progress, completed
+  results     Json?    // Test results as JSON
+  notes       String?
+  orderedAt   DateTime @default(now())
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  patient     Patient @relation(fields: [patientId], references: [id])
+  
+  @@index([hospitalId])
+  @@index([patientId])
+  @@index([testId])
+}
+
+// ==================== MEDICAL RECORDS ====================
+
+model MedicalRecord {
+  id          String   @id @default(uuid())
+  patientId   String
+  recordType  String   // consultation, diagnosis, procedure, etc.
+  recordDate  DateTime
+  diagnosis   String?
+  treatment   String?
+  notes       String?
+  attachments String[] // URLs to attached documents
+  recordedBy  String   // User ID of the doctor/nurse
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  patient     Patient @relation(fields: [patientId], references: [id])
+  
+  @@index([patientId])
+  @@index([recordDate])
+}
+
+// ==================== BILLING ====================
+
+model Bill {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  billId      String   @unique  // e.g., "BILL-00123"
+  patientId   String
+  patientName String
+  type        String   // Consultation, Laboratory, Procedure, etc.
+  category    String?  // OPD, IPD, Emergency
+  description String?
+  amount      Float
+  status      String   @default("pending")  // pending, paid, cancelled
+  paymentMethod String? // Cash, Insurance, Mobile Money, etc.
+  paymentDate DateTime?
+  receiptId   String?
+  paidAt      String?  // Department that collected payment
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  
+  @@index([hospitalId])
+  @@index([patientId])
+  @@index([billId])
+}
+
+// ==================== SERVICES ====================
+
+model Service {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  serviceId   String   @unique  // e.g., "SRV-001"
+  name        String
+  category    String   // Consultation, Laboratory, Radiology, etc.
+  description String?
+  price       Float
+  duration    Int?     // Duration in minutes
+  department  String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  
+  @@index([hospitalId])
+  @@index([category])
+}
+
+// ==================== QUEUE MANAGEMENT ====================
+
+model QueueEntry {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  queueNumber String
+  patientId   String
+  patientName String
+  department  String   // Doctor, Laboratory, Pharmacy, etc.
+  service     String
+  priority    String   @default("Normal")  // Emergency, Urgent, Normal
+  status      String   @default("Waiting")  // Waiting, Called, InService, Completed, Cancelled
+  checkInTime DateTime @default(now())
+  serviceStartTime DateTime?
+  serviceEndTime DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  
+  @@index([hospitalId])
+  @@index([status])
+  @@index([department])
+}
+
+// ==================== CASES ====================
+
+model Case {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  caseId      String   @unique  // e.g., "CASE-2024-0001"
+  patientId   String
+  patientName String
+  status      String   @default("Open")  // Open, Closed
+  startDate   String
+  endDate     String?
+  type        String   // OPD, IPD, Emergency
+  department  String
+  chiefComplaint String?
+  assignedDoctorId String?
+  assignedDoctorName String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  
+  @@index([hospitalId])
+  @@index([patientId])
+  @@index([status])
+}
+
+// ==================== BED MANAGEMENT ====================
+
+model Ward {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  wardId      String   @unique  // e.g., "WARD-A"
+  name        String
+  floor       String?
+  type        String   // General, ICU, Maternity, Pediatric
+  totalBeds   Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  beds        Bed[]
+  
+  @@index([hospitalId])
+}
+
+model Bed {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  wardId      String
+  bedNumber   String
+  status      String   @default("available")  // available, occupied, maintenance
+  patientId   String?
+  patientName String?
+  admissionDate DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  ward        Ward @relation(fields: [wardId], references: [id])
+  
+  @@index([hospitalId])
+  @@index([wardId])
+  @@index([status])
+  @@unique([wardId, bedNumber])
+}
+
+// ==================== INVENTORY ====================
+
+model InventoryItem {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  itemId      String   @unique  // e.g., "INV-001"
+  name        String
+  category    String   // Medication, Consumable, Equipment
+  quantity    Int
+  unit        String   // Tablets, Bottles, Pieces, etc.
+  reorderLevel Int
+  batchNumber String?
+  expiryDate  DateTime?
+  supplier    String?
+  costPerUnit Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  
+  @@index([hospitalId])
+  @@index([category])
+}
+

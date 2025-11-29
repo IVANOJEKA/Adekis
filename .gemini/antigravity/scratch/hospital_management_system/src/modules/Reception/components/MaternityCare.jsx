@@ -4,38 +4,50 @@ import { useData } from '../../../context/DataContext';
 import { generatePatientId } from '../../../utils/patientIdUtils';
 
 const MaternityCare = () => {
-    const { patients: allPatients, setPatients } = useData();
+    const { patients: allPatients, addPatient } = useData();
     const [showRegisterModal, setShowRegisterModal] = useState(false);
 
     // Filter for maternity patients
-    const mothers = allPatients.filter(p => p.id && p.id.startsWith('M-'));
+    const mothers = allPatients.filter(p => p.patientCategory === 'Maternity' || (p.id && p.id.startsWith('M-')));
 
-    const handleRegister = (e) => {
+    const handleRegister = async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
 
+        // Calculate DOB from Age
+        const age = parseInt(formData.get('age') || 0);
+        const birthYear = new Date().getFullYear() - age;
+        const dateOfBirth = new Date(birthYear, 0, 1).toISOString();
+
         const newMother = {
-            id: generatePatientId(allPatients, 'maternity'),
             name: formData.get('fullName'),
-            age: formData.get('age'),
+            dateOfBirth: dateOfBirth,
             gender: 'Female',
             phone: formData.get('phone'),
-            weeks: formData.get('weeks'),
-            edd: formData.get('edd'),
-            lmp: formData.get('lmp'),
-            gravida: formData.get('gravida'),
-            para: formData.get('para'),
-            risk: formData.get('risk'),
-            nextVisit: formData.get('nextVisit'),
             patientCategory: 'Maternity',
-            type: formData.get('type'),
-            insurance: formData.get('insuranceProvider') || '-',
-            lastVisit: new Date().toLocaleDateString(),
-            registrationDate: new Date().toISOString()
+            insuranceProvider: formData.get('insuranceProvider') || '-',
+            // Store extra fields in details
+            details: {
+                weeks: formData.get('weeks'),
+                edd: formData.get('edd'),
+                lmp: formData.get('lmp'),
+                gravida: formData.get('gravida'),
+                para: formData.get('para'),
+                risk: formData.get('risk'),
+                nextVisit: formData.get('nextVisit'),
+                type: formData.get('type')
+            },
+            status: 'Active'
         };
 
-        setPatients([...allPatients, newMother]);
-        setShowRegisterModal(false);
+        const result = await addPatient(newMother);
+
+        if (result.success) {
+            setShowRegisterModal(false);
+            alert(`Maternity Patient Registered Successfully! ID: ${result.patient.patientId || result.patient.id}`);
+        } else {
+            alert(`Failed to register patient: ${result.error}`);
+        }
     };
 
     return (
@@ -65,30 +77,40 @@ const MaternityCare = () => {
                                     </div>
                                     <div>
                                         <h3 className="font-bold text-slate-800">{mother.name}</h3>
-                                        <p className="text-xs text-slate-500">{mother.id} • {mother.age}y</p>
+                                        <p className="text-xs text-slate-500">{mother.patientId || mother.id} • {
+                                            (() => {
+                                                if (mother.age) return mother.age;
+                                                if (mother.dateOfBirth) {
+                                                    const birthDate = new Date(mother.dateOfBirth);
+                                                    return new Date().getFullYear() - birthDate.getFullYear();
+                                                }
+                                                return 'N/A';
+                                            })()
+                                        }y</p>
                                     </div>
                                 </div>
                                 <span className={`px-2 py-1 rounded text-xs font-bold ${mother.risk === 'High' ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'
                                     }`}>
-                                    {mother.risk} Risk
+                                    }`}>
+                                    {mother.details?.risk || mother.risk} Risk
                                 </span>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div className="bg-slate-50 p-2 rounded-lg">
                                     <p className="text-xs text-slate-500 mb-1">Gestation</p>
-                                    <p className="font-bold text-slate-800">{mother.weeks} Weeks</p>
+                                    <p className="font-bold text-slate-800">{mother.details?.weeks || mother.weeks} Weeks</p>
                                 </div>
                                 <div className="bg-slate-50 p-2 rounded-lg">
                                     <p className="text-xs text-slate-500 mb-1">EDD</p>
-                                    <p className="font-bold text-slate-800">{mother.edd}</p>
+                                    <p className="font-bold text-slate-800">{mother.details?.edd || mother.edd}</p>
                                 </div>
                             </div>
 
                             <div className="flex items-center justify-between text-sm">
                                 <div className="flex items-center gap-2 text-slate-500">
                                     <Calendar size={14} />
-                                    <span>Next: {mother.nextVisit}</span>
+                                    <span>Next: {mother.details?.nextVisit || mother.nextVisit}</span>
                                 </div>
                                 <button className="text-pink-500 hover:text-pink-700 font-medium text-xs flex items-center gap-1">
                                     View File <FileText size={12} />
@@ -125,7 +147,7 @@ const MaternityCare = () => {
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Maternity Patient ID (Auto-Generated)</p>
-                                        <p className="text-2xl font-bold text-pink-600 mt-1">{generatePatientId(allPatients, 'maternity')}</p>
+                                        <p className="text-2xl font-bold text-pink-600 mt-1">Auto-Generated</p>
                                     </div>
                                     <div className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">
                                         Auto-Assigned

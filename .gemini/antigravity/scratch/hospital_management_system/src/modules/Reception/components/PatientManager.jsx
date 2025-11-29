@@ -8,7 +8,7 @@ import NewCaseModal from './NewCaseModal';
 import ReceiptModal from './ReceiptModal';
 
 const PatientManager = () => {
-    const { patients: allPatients, setPatients, cases, setCases, systemSettings, addBill } = useData();
+    const { patients: allPatients, addPatient, cases, setCases, systemSettings, addBill } = useData();
     const { formatCurrency } = useCurrency();
     const { deductFromWallet, walletBalance } = useWallet();
 
@@ -61,16 +61,47 @@ const PatientManager = () => {
         }
 
         const formData = new FormData(e.target);
-        const patientId = generatePatientId(allPatients, 'regular');
-        const receiptId = `${systemSettings.receiptPrefix || 'REC'}-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
-        const currentDate = new Date().toISOString();
+
+        // Calculate DOB from Age
+        const age = parseInt(formData.get('age'));
+        const birthYear = new Date().getFullYear() - age;
+        const dateOfBirth = new Date(birthYear, 0, 1).toISOString();
+
         const consultationFee = systemSettings.consultationFees[patientCategory];
+        const currentDate = new Date().toISOString();
+
+        // Prepare patient data for Backend API
+        const patientData = {
+            name: formData.get('fullName'),
+            dateOfBirth: dateOfBirth,
+            gender: formData.get('gender'),
+            phone: formData.get('phone'),
+            address: formData.get('address') || 'N/A',
+            email: '', // Add email field if available in form
+            patientCategory: patientCategory,
+            insuranceProvider: paymentMethod === 'Insurance' ? paymentDetails.insuranceProvider : null,
+            insurancePolicyNo: paymentMethod === 'Insurance' ? paymentDetails.policyNumber : null,
+            emergencyContact: '', // Add if available
+            emergencyPhone: '' // Add if available
+        };
+
+        // Call API to create patient
+        const result = await addPatient(patientData);
+
+        if (!result.success) {
+            alert(`Failed to register patient: ${result.error}`);
+            return;
+        }
+
+        const newPatient = result.patient;
+        const patientId = newPatient.patientId; // Use the readable ID from backend
+        const receiptId = `${systemSettings.receiptPrefix || 'REC'}-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
 
         // Create receipt for EMR and display
         const newReceipt = {
             id: receiptId,
             patientId: patientId,
-            patientName: formData.get('fullName'),
+            patientName: newPatient.name,
             patientType: patientCategory,
             amount: consultationFee,
             paymentMethod: paymentMethod,
@@ -81,27 +112,7 @@ const PatientManager = () => {
             hospitalPhone: systemSettings.hospitalPhone || '+256 700 000000'
         };
 
-        // Create patient record
-        const newPatient = {
-            id: patientId,
-            name: formData.get('fullName'),
-            age: formData.get('age'),
-            gender: formData.get('gender'),
-            phone: formData.get('phone'),
-            address: formData.get('address') || 'N/A',
-            type: formData.get('type'),
-            insurance: formData.get('insuranceProvider') || '-',
-            lastVisit: new Date().toLocaleDateString(),
-            patientCategory: patientCategory,
-            registrationDate: currentDate,
-            consultationFeePaid: true,
-            consultationFeeAmount: consultationFee,
-            consultationFeeReceiptId: receiptId,
-            paymentMethod: paymentMethod,
-            receipts: [newReceipt] // Store receipt in EMR
-        };
-
-        // Create financial record for consultation fee
+        // Create financial record for consultation fee (Local for now, TODO: Migrate to Backend)
         const consultationFeeRecord = {
             id: `FIN-${Date.now()}`,
             patientId: patientId,
@@ -124,13 +135,10 @@ const PatientManager = () => {
         // Add bill to system
         addBill(consultationFeeRecord);
 
-        // Add patient
-        setPatients([...allPatients, newPatient]);
-
-        // Auto-create initial case for new patient
+        // Auto-create initial case for new patient (Local for now)
         const initialCase = {
             id: `CASE-${new Date().getFullYear()}-${String(cases.length + 1).padStart(4, '0')}`,
-            patientId: newPatient.id,
+            patientId: patientId, // Use readable ID for consistency with local data
             patientName: newPatient.name,
             status: 'Open',
             startDate: new Date().toISOString().split('T')[0],
@@ -219,7 +227,7 @@ const PatientManager = () => {
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-1">
                                                 <h3 className="font-bold text-slate-800 text-lg">{patient.name}</h3>
-                                                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-bold rounded">{patient.id}</span>
+                                                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-bold rounded">{patient.patientId || patient.id}</span>
                                                 <span className={`px-2 py-0.5 text-xs font-bold rounded ${patient.type === 'Insurance' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
                                                     }`}>
                                                     {patient.type}
@@ -333,7 +341,7 @@ const PatientManager = () => {
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Patient ID (Auto-Generated)</p>
-                                        <p className="text-2xl font-bold text-primary mt-1">{generatePatientId(allPatients, 'regular')}</p>
+                                        <p className="text-2xl font-bold text-primary mt-1">Auto-Generated</p>
                                     </div>
                                     <div className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">
                                         Auto-Assigned
@@ -422,8 +430,8 @@ const PatientManager = () => {
                                                 type="button"
                                                 onClick={() => setPaymentMethod(method)}
                                                 className={`p-3 border-2 rounded-lg transition-all text-sm font-medium ${paymentMethod === method
-                                                        ? 'border-primary bg-primary/10 text-primary'
-                                                        : 'border-slate-200 hover:border-primary/50'
+                                                    ? 'border-primary bg-primary/10 text-primary'
+                                                    : 'border-slate-200 hover:border-primary/50'
                                                     }`}
                                             >
                                                 {method === 'Cash' && <CreditCard size={18} className="mx-auto mb-1" />}

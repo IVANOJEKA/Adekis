@@ -4,7 +4,7 @@ import { useData } from '../../../context/DataContext';
 import { generatePatientId } from '../../../utils/patientIdUtils';
 
 const PediatricCare = () => {
-    const { patients, setPatients } = useData();
+    const { patients, addPatient } = useData();
     const [showModal, setShowModal] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
@@ -42,38 +42,39 @@ const PediatricCare = () => {
         }
 
         const newPatient = {
-            id: nextId,
             name: formData.name,
             parentName: formData.parentName,
-            age: ageDisplay,
-            dob: formData.dob,
+            dateOfBirth: formData.dob,
             gender: formData.gender,
             phone: formData.emergencyContact,
             weight: formData.weight,
             height: formData.height,
             bloodGroup: formData.bloodGroup,
-            type: 'Pediatric',
-            category: 'Pediatric',
-            status: 'Active',
-            registrationDate: new Date().toISOString().split('T')[0]
+            patientCategory: 'Pediatric',
+            status: 'Active'
         };
 
-        setPatients([...patients, newPatient]);
-        setShowModal(false);
-        setFormData({
-            name: '',
-            parentName: '',
-            dob: '',
-            gender: 'Male',
-            weight: '',
-            height: '',
-            bloodGroup: '',
-            emergencyContact: ''
-        });
-        alert(`Pediatric Patient Registered Successfully! ID: ${newPatient.id}`);
+        const result = await addPatient(newPatient);
+
+        if (result.success) {
+            setShowModal(false);
+            setFormData({
+                name: '',
+                parentName: '',
+                dob: '',
+                gender: 'Male',
+                weight: '',
+                height: '',
+                bloodGroup: '',
+                emergencyContact: ''
+            });
+            alert(`Pediatric Patient Registered Successfully! ID: ${result.patient.patientId || result.patient.id}`);
+        } else {
+            alert(`Failed to register patient: ${result.error}`);
+        }
     };
 
-    const pediatricPatients = patients.filter(p => p.type === 'Pediatric' || p.id.startsWith('PD-'));
+    const pediatricPatients = patients.filter(p => p.patientCategory === 'Pediatric');
 
     return (
         <div className="space-y-6">
@@ -117,9 +118,23 @@ const PediatricCare = () => {
                         <tbody className="divide-y divide-slate-100">
                             {pediatricPatients.length > 0 ? pediatricPatients.map((patient) => (
                                 <tr key={patient.id} className="hover:bg-slate-50 transition-colors">
-                                    <td className="p-4 font-medium text-primary">{patient.id}</td>
+                                    <td className="p-4 font-medium text-primary">{patient.patientId || patient.id}</td>
                                     <td className="p-4 font-medium text-slate-800">{patient.name}</td>
-                                    <td className="p-4 text-slate-600">{patient.age} / {patient.gender}</td>
+                                    <td className="p-4 text-slate-600">
+                                        {/* Calculate Age Display */}
+                                        {(() => {
+                                            if (!patient.dateOfBirth) return 'N/A';
+                                            const birthDate = new Date(patient.dateOfBirth);
+                                            const today = new Date();
+                                            let age = today.getFullYear() - birthDate.getFullYear();
+                                            const m = today.getMonth() - birthDate.getMonth();
+                                            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                                                age--;
+                                            }
+                                            return `${age} yrs`;
+                                        })()}
+                                        / {patient.gender}
+                                    </td>
                                     <td className="p-4 text-slate-600">{patient.parentName || '-'}</td>
                                     <td className="p-4 text-slate-600">{patient.phone}</td>
                                     <td className="p-4 text-slate-600">
