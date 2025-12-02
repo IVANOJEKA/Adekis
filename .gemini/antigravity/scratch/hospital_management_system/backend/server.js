@@ -26,6 +26,11 @@ const bedManagementRoutes = require('./routes/bedManagement');
 const theatreRoutes = require('./routes/theatre');
 const emrRoutes = require('./routes/emr');
 const maternityRoutes = require('./routes/maternity');
+const financeRoutes = require('./routes/finance');
+const settingsRoutes = require('./routes/settings');
+const reportsRoutes = require('./routes/reports');
+const campsRoutes = require('./routes/camps');
+const pathologyRoutes = require('./routes/pathology');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -73,6 +78,11 @@ app.use('/api/maternity', maternityRoutes);
 app.use('/api/triage', triageRoutes);
 app.use('/api/lab', labRoutes);
 app.use('/api/lab-inventory', labInventoryRoutes);
+app.use('/api/finance', financeRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/camps', campsRoutes);
+app.use('/api/pathology', pathologyRoutes);
 
 // Start Server
 app.listen(PORT, () => {

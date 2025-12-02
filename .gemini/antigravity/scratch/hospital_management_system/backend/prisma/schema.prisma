@@ -64,6 +64,8 @@ model Hospital {
   labInventory       LabInventory[]
   labInventoryTransactions LabInventoryTransaction[]
   triageRecords      TriageRecord[]
+  expenses           Expense[]
+  medicalCamps       MedicalCamp[]
 }
 
 // ==================== WALLET & PAYMENTS ====================
@@ -165,6 +167,7 @@ model Patient {
   maternityRecords MaternityPatient[]
   triageRecords TriageRecord[]
   admissions   Admission[]
+  campPatients CampPatient[]
   wallet       Wallet?
   
   @@index([hospitalId])
@@ -1002,3 +1005,75 @@ model Admission {
   @@index([bedId])
   @@index([status])
 }
+
+// ==================== FINANCE ====================
+
+model Expense {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  category    String   // Utilities, Supplies, Salaries, Maintenance, Other
+  description String
+  amount      Float
+  date        DateTime @default(now())
+  status      String   @default("Pending") // Pending, Approved, Paid
+  requestedBy String?  // User ID
+  approvedBy  String?  // User ID
+  approvedDate DateTime?
+  paidDate    DateTime?
+  paymentMethod String?
+  reference   String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+
+  @@index([hospitalId])
+  @@index([category])
+  @@index([status])
+  @@index([date])
+}
+
+// ==================== MEDICAL CAMPS ====================
+
+model MedicalCamp {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  name        String
+  location    String
+  startDate   DateTime
+  endDate     DateTime
+  description String?
+  organizer   String
+  services    String[] // Array of services offered
+  status      String   @default("Scheduled") // Scheduled, Ongoing, Completed, Cancelled
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  patients    CampPatient[]
+
+  @@index([hospitalId])
+  @@index([status])
+  @@index([startDate])
+}
+
+model CampPatient {
+  id          String   @id @default(uuid())
+  campId      String
+  patientId   String
+  servicesReceived String[] // Array of services received
+  registeredAt DateTime @default(now())
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  camp        MedicalCamp @relation(fields: [campId], references: [id])
+  patient     Patient     @relation(fields: [patientId], references: [id])
+
+  @@index([campId])
+  @@index([patientId])
+}
+

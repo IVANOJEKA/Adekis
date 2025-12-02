@@ -787,6 +787,234 @@ export const bedManagementAPI = {
     }
 };
 
+// ==================== FINANCE API ====================
+
+export const financeAPI = {
+    // Get expenses
+    getExpenses: async (params) => {
+        const response = await api.get('/finance/expenses', { params });
+        return response.data.expenses || response.data;
+    },
+
+    // Create expense
+    createExpense: async (expenseData) => {
+        const response = await api.post('/finance/expenses', expenseData);
+        return response.data;
+    },
+
+    // Approve expense
+    approveExpense: async (id) => {
+        const response = await api.patch(`/finance/expenses/${id}/approve`);
+        return response.data;
+    },
+
+    // Mark expense as paid
+    payExpense: async (id, paymentData) => {
+        const response = await api.patch(`/finance/expenses/${id}/pay`, paymentData);
+        return response.data;
+    },
+
+    // Get financial summary
+    getSummary: async (period = 'month') => {
+        const response = await api.get('/finance/summary', { params: { period } });
+        return response.data.summary;
+    },
+
+    // Get revenue by category
+    getRevenueByCategory: async (startDate, endDate) => {
+        const response = await api.get('/finance/revenue-by-category', {
+            params: { startDate, endDate }
+        });
+        return response.data.revenueByCategory;
+    },
+
+    // Get all transactions
+    getTransactions: async (params) => {
+        const response = await api.get('/finance/transactions', { params });
+        return response.data.transactions;
+    }
+};
+
+// ==================== SETTINGS API ====================
+
+export const settingsAPI = {
+    // Get hospital settings
+    getHospitalSettings: async () => {
+        const response = await api.get('/settings/hospital');
+        return response.data.hospital;
+    },
+
+    // Update hospital settings
+    updateHospitalSettings: async (settings) => {
+        const response = await api.patch('/settings/hospital', settings);
+        return response.data;
+    },
+
+    // Get service pricing
+    getPricing: async (params) => {
+        const response = await api.get('/settings/pricing', { params });
+        return response.data.services;
+    },
+
+    // Create service price
+    createPricing: async (pricingData) => {
+        const response = await api.post('/settings/pricing', pricingData);
+        return response.data;
+    },
+
+    // Update service price
+    updatePricing: async (id, pricingData) => {
+        const response = await api.patch(`/settings/pricing/${id}`, pricingData);
+        return response.data;
+    },
+
+    // Delete service price
+    deletePricing: async (id) => {
+        const response = await api.delete(`/settings/pricing/${id}`);
+        return response.data;
+    },
+
+    // Get preferences
+    getPreferences: async () => {
+        const response = await api.get('/settings/preferences');
+        return response.data.preferences;
+    },
+
+    // Update preferences
+    updatePreferences: async (preferences) => {
+        const response = await api.patch('/settings/preferences', preferences);
+        return response.data;
+    },
+
+    // Get users
+    getUsers: async (params) => {
+        const response = await api.get('/settings/users', { params });
+        return response.data.users;
+    },
+
+    // Update user status
+    updateUserStatus: async (id, status) => {
+        const response = await api.patch(`/settings/users/${id}/status`, { status });
+        return response.data;
+    }
+};
+
+// ==================== REPORTS API ====================
+
+export const reportsAPI = {
+    // Get patient statistics
+    getPatientStatistics: async (startDate, endDate) => {
+        const response = await api.get('/reports/patient-statistics', {
+            params: { startDate, endDate }
+        });
+        return response.data.report;
+    },
+
+    // Get revenue report
+    getRevenueReport: async (startDate, endDate, groupBy = 'day') => {
+        const response = await api.get('/reports/revenue', {
+            params: { startDate, endDate, groupBy }
+        });
+        return response.data.report;
+    },
+
+    // Get appointments report
+    getAppointmentsReport: async (startDate, endDate) => {
+        const response = await api.get('/reports/appointments', {
+            params: { startDate, endDate }
+        });
+        return response.data.report;
+    },
+
+    // Get lab report
+    getLabReport: async (startDate, endDate) => {
+        const response = await api.get('/reports/lab', {
+            params: { startDate, endDate }
+        });
+        return response.data.report;
+    },
+
+    // Get inventory report
+    getInventoryReport: async () => {
+        const response = await api.get('/reports/inventory');
+        return response.data.report;
+    },
+
+    // Get bed occupancy report
+    getBedOccupancyReport: async () => {
+        const response = await api.get('/reports/bed-occupancy');
+        return response.data.report;
+    },
+
+    // Get dashboard summary
+    getDashboardSummary: async () => {
+        const response = await api.get('/reports/dashboard-summary');
+        return response.data.summary;
+    }
+};
+
+// ==================== CAMPS API ====================
+
+export const campsAPI = {
+    // Get all medical camps
+    getAll: async (params) => {
+        const response = await api.get('/camps', { params });
+        return response.data.camps || response.data;
+    },
+
+    // Create medical camp
+    create: async (campData) => {
+        const response = await api.post('/camps', campData);
+        return response.data;
+    },
+
+    // Update camp
+    update: async (id, campData) => {
+        const response = await api.patch(`/camps/${id}`, campData);
+        return response.data;
+    },
+
+    // Register patient to camp
+    registerPatient: async (id, patientData) => {
+        const response = await api.post(`/camps/${id}/register-patient`, patientData);
+        return response.data;
+    },
+
+    // Get camp patients
+    getCampPatients: async (id) => {
+        const response = await api.get(`/camps/${id}/patients`);
+        return response.data.patients;
+    }
+};
+
+// ==================== PATHOLOGY API ====================
+
+export const pathologyAPI = {
+    // Get pathology tests
+    getTests: async (params) => {
+        const response = await api.get('/pathology/tests', { params });
+        return response.data.tests || response.data;
+    },
+
+    // Order pathology test
+    orderTest: async (testData) => {
+        const response = await api.post('/pathology/tests', testData);
+        return response.data;
+    },
+
+    // Update test results
+    updateResults: async (id, resultsData) => {
+        const response = await api.patch(`/pathology/tests/${id}/results`, resultsData);
+        return response.data;
+    },
+
+    // Get specific test
+    getTest: async (id) => {
+        const response = await api.get(`/pathology/tests/${id}`);
+        return response.data.test;
+    }
+};
+
 // Export the api instance for custom calls
 export default api;
 
