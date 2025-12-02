@@ -709,6 +709,52 @@ export const hrAPI = {
         const response = await api.put(`/hr/payroll/${id}`, data);
         return response.data;
     }
+}
+
+// ==================== WALLET API ====================
+
+export const walletAPI = {
+    // Get all wallets
+    getAll: async (params) => {
+        const response = await api.get('/wallet', { params });
+        return response.data.wallets || response.data;
+    },
+
+    // Get wallet by ID
+    getById: async (id) => {
+        const response = await api.get(`/wallet/${id}`);
+        return response.data.wallet;
+    },
+
+    // Create wallet
+    create: async (walletData) => {
+        const response = await api.post('/wallet', walletData);
+        return response.data;
+    },
+
+    // Top up wallet
+    topUp: async (id, data) => {
+        const response = await api.post(`/wallet/${id}/topup`, data);
+        return response.data;
+    },
+
+    // Deduct from wallet
+    deduct: async (id, data) => {
+        const response = await api.post(`/wallet/${id}/deduct`, data);
+        return response.data;
+    },
+
+    // Get wallet transactions
+    getTransactions: async (id, params) => {
+        const response = await api.get(`/wallet/${id}/transactions`, { params });
+        return response.data.transactions || response.data;
+    },
+
+    // Update wallet status
+    updateStatus: async (id, status) => {
+        const response = await api.patch(`/wallet/${id}/status`, { status });
+        return response.data;
+    }
 };
 
 // Export the api instance for custom calls

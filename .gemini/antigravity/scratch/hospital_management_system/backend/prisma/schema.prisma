@@ -66,6 +66,46 @@ model Hospital {
   triageRecords      TriageRecord[]
 }
 
+// ==================== WALLET & PAYMENTS ====================
+
+model Wallet {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  patientId   String   @unique
+  balance     Float    @default(0)
+  currency    String   @default("KES")
+  status      String   @default("active") // active, suspended
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  transactions WalletTransaction[]
+
+  @@index([hospitalId])
+  @@index([patientId])
+}
+
+model WalletTransaction {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  walletId    String
+  type        String   // credit, debit
+  amount      Float
+  description String?
+  reference   String?  // e.g., payment reference, bill ID
+  performedBy String?  // User ID who performed the transaction
+  createdAt   DateTime @default(now())
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  wallet      Wallet   @relation(fields: [walletId], references: [id])
+
+  @@index([hospitalId])
+  @@index([walletId])
+}
+
 // ==================== USERS & AUTHENTICATION ====================
 
 model User {
@@ -124,6 +164,7 @@ model Patient {
   labTests     LabTest[]
   maternityRecords MaternityPatient[]
   triageRecords TriageRecord[]
+  wallet       Wallet?
   
   @@index([hospitalId])
   @@index([patientId])
@@ -737,42 +778,6 @@ model InsuranceClaim {
 }
 
 // ==================== WALLET ====================
-
-model Wallet {
-  id            String   @id @default(uuid())
-  patientId     String?  // Optional, can be standalone
-  cardholderName String
-  cardNumber    String   @unique
-  packageType   String   // Platinum, Gold, Family, Standard
-  balance       Float    @default(0)
-  status        String   @default("Active")
-  expiryDate    String
-  members       String[] // Names of family members covered
-  transactions  WalletTransaction[]
-  hospitalId    String
-  hospital      Hospital @relation(fields: [hospitalId], references: [id])
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@index([hospitalId])
-  @@index([patientId])
-}
-
-model WalletTransaction {
-  id          String   @id @default(uuid())
-  walletId    String
-  wallet      Wallet   @relation(fields: [walletId], references: [id])
-  type        String   // Credit, Debit
-  amount      Float
-  description String
-  balanceAfter Float
-  date        DateTime @default(now())
-  hospitalId  String
-  hospital    Hospital @relation(fields: [hospitalId], references: [id])
-
-  @@index([hospitalId])
-  @@index([walletId])
-}
 
 model Payroll {
   id          String   @id @default(uuid())

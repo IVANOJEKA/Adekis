@@ -1,135 +1,316 @@
 const express = require('express');
-const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
-const { authMiddleware, attachHospitalId } = require('../middleware/auth');
+const { authenticateToken, attachHospitalId } = require('../middleware/auth');
 
+const router = express.Router();
 const prisma = new PrismaClient();
 
-// Middleware to ensure authentication
-router.use(authMiddleware); router.use(attachHospitalId);
+// Apply authentication and hospital ID middleware to all routes
+router.use(authenticateToken);
+router.use(attachHospitalId);
 
-// ==================== WALLETS ====================
-
-// Get all wallets
+// GET /api/wallet - Get all wallets (admin/staff view)
 router.get('/', async (req, res) => {
     try {
-        const wallets = await prisma.wallet.findMany({
-            where: { hospitalId: req.user.hospitalId },
-            include: { transactions: { take: 5, orderBy: { date: 'desc' } } },
-            orderBy: { createdAt: 'desc' }
-        });
-        res.json(wallets);
-    } catch (error) {
-        res.status(500).json({ error: 'Error fetching wallets' });
-    }
-});
+        const { hospitalId } = req;
+        const { search, status } = req.query;
 
-// Create new wallet
-router.post('/', async (req, res) => {
-    try {
-        const { cardholderName, packageType, initialBalance, members } = req.body;
+        const where = { hospitalId };
 
-        // Generate card number
-        const generateCardNumber = () => {
-            const part1 = Math.floor(1000 + Math.random() * 9000);
-            const part2 = Math.floor(1000 + Math.random() * 9000);
-            const part3 = Math.floor(1000 + Math.random() * 9000);
-            const part4 = Math.floor(1000 + Math.random() * 9000);
-            return `${part1}-${part2}-${part3}-${part4}`;
-        };
-
-        // Generate expiry date (3 years from now)
-        const generateExpiryDate = () => {
-            const now = new Date();
-            const expiry = new Date(now.setFullYear(now.getFullYear() + 3));
-            const month = String(expiry.getMonth() + 1).padStart(2, '0');
-            const year = String(expiry.getFullYear()).slice(-2);
-            return `${month}/${year}`;
-        };
-
-        const wallet = await prisma.wallet.create({
-            data: {
-                cardholderName,
-                cardNumber: generateCardNumber(),
-                packageType,
-                balance: parseFloat(initialBalance) || 0,
-                expiryDate: generateExpiryDate(),
-                members: members || [],
-                status: 'Active',
-                hospitalId: req.user.hospitalId
-            }
-        });
-
-        // Create initial transaction if balance > 0
-        if (initialBalance > 0) {
-            await prisma.walletTransaction.create({
-                data: {
-                    walletId: wallet.id,
-                    type: 'Credit',
-                    amount: parseFloat(initialBalance),
-                    description: 'Initial Top-up',
-                    balanceAfter: parseFloat(initialBalance),
-                    hospitalId: req.user.hospitalId
-                }
-            });
+        if (search) {
+            where.OR = [
+                { patient: { name: { contains: search, mode: 'insensitive' } } },
+                { patient: { patientId: { contains: search, mode: 'insensitive' } } }
+            ];
         }
 
-        res.status(201).json(wallet);
+        if (status) {
+            where.status = status;
+        }
+
+        const wallets = await prisma.wallet.findMany({
+            where,
+            include: {
+                patient: {
+                    select: {
+                        id: true,
+                        patientId: true,
+                        name: true,
+                        phone: true,
+                        gender: true
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        res.json({ wallets });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error creating wallet' });
+        console.error('Get wallets error:', error);
+        res.status(500).json({ error: 'Failed to fetch wallets' });
     }
 });
 
-// Top up wallet
-router.post('/:id/topup', async (req, res) => {
+// GET /api/wallet/:id - Get specific wallet details
+router.get('/:id', async (req, res) => {
     try {
-        const { amount, paymentMethod } = req.body;
         const { id } = req.params;
+        const { hospitalId } = req;
 
-        const wallet = await prisma.wallet.findUnique({
-            where: { id, hospitalId: req.user.hospitalId }
+        const wallet = await prisma.wallet.findFirst({
+            where: { id, hospitalId },
+            include: {
+                patient: true,
+                transactions: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 50 // Last 50 transactions
+                }
+            }
         });
 
         if (!wallet) {
             return res.status(404).json({ error: 'Wallet not found' });
         }
 
-        const newBalance = wallet.balance + parseFloat(amount);
-
-        const updatedWallet = await prisma.wallet.update({
-            where: { id },
-            data: { balance: newBalance }
-        });
-
-        await prisma.walletTransaction.create({
-            data: {
-                walletId: id,
-                type: 'Credit',
-                amount: parseFloat(amount),
-                description: `Top-up via ${paymentMethod}`,
-                balanceAfter: newBalance,
-                hospitalId: req.user.hospitalId
-            }
-        });
-
-        res.json(updatedWallet);
+        res.json({ wallet });
     } catch (error) {
-        res.status(500).json({ error: 'Error topping up wallet' });
+        console.error('Get wallet error:', error);
+        res.status(500).json({ error: 'Failed to fetch wallet' });
     }
 });
 
-// Get wallet transactions
+// POST /api/wallet - Create a new wallet
+router.post('/', async (req, res) => {
+    try {
+        const { patientId, initialBalance = 0 } = req.body;
+        const { hospitalId, userId } = req;
+
+        // Check if wallet already exists for this patient
+        const existingWallet = await prisma.wallet.findFirst({
+            where: { patientId, hospitalId }
+        });
+
+        if (existingWallet) {
+            return res.status(400).json({ error: 'Wallet already exists for this patient' });
+        }
+
+        // Check if patient exists
+        const patient = await prisma.patient.findFirst({
+            where: { id: patientId, hospitalId }
+        });
+
+        if (!patient) {
+            return res.status(404).json({ error: 'Patient not found' });
+        }
+
+        // Create wallet
+        const wallet = await prisma.wallet.create({
+            data: {
+                hospitalId,
+                patientId,
+                balance: initialBalance,
+                currency: 'KES',
+                status: 'active'
+            },
+            include: {
+                patient: true
+            }
+        });
+
+        // If initial balance, create a transaction record
+        if (initialBalance > 0) {
+            await prisma.walletTransaction.create({
+                data: {
+                    hospitalId,
+                    walletId: wallet.id,
+                    type: 'credit',
+                    amount: initialBalance,
+                    description: 'Initial wallet balance',
+                    performedBy: userId
+                }
+            });
+        }
+
+        res.status(201).json({ wallet, message: 'Wallet created successfully' });
+    } catch (error) {
+        console.error('Create wallet error:', error);
+        res.status(500).json({ error: 'Failed to create wallet' });
+    }
+});
+
+// POST /api/wallet/:id/topup - Top up wallet balance
+router.post('/:id/topup', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { amount, description, reference } = req.body;
+        const { hospitalId, userId } = req;
+
+        if (!amount || amount <= 0) {
+            return res.status(400).json({ error: 'Invalid amount' });
+        }
+
+        // Get wallet
+        const wallet = await prisma.wallet.findFirst({
+            where: { id, hospitalId }
+        });
+
+        if (!wallet) {
+            return res.status(404).json({ error: 'Wallet not found' });
+        }
+
+        if (wallet.status !== 'active') {
+            return res.status(400).json({ error: 'Wallet is not active' });
+        }
+
+        // Update wallet balance and create transaction
+        const [updatedWallet, transaction] = await prisma.$transaction([
+            prisma.wallet.update({
+                where: { id },
+                data: { balance: { increment: parseFloat(amount) } },
+                include: { patient: true }
+            }),
+            prisma.walletTransaction.create({
+                data: {
+                    hospitalId,
+                    walletId: id,
+                    type: 'credit',
+                    amount: parseFloat(amount),
+                    description: description || 'Wallet top-up',
+                    reference,
+                    performedBy: userId
+                }
+            })
+        ]);
+
+        res.json({
+            wallet: updatedWallet,
+            transaction,
+            message: 'Wallet topped up successfully'
+        });
+    } catch (error) {
+        console.error('Top-up wallet error:', error);
+        res.status(500).json({ error: 'Failed to top up wallet' });
+    }
+});
+
+// POST /api/wallet/:id/deduct - Deduct from wallet (for payments)
+router.post('/:id/deduct', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { amount, description, reference } = req.body;
+        const { hospitalId, userId } = req;
+
+        if (!amount || amount <= 0) {
+            return res.status(400).json({ error: 'Invalid amount' });
+        }
+
+        // Get wallet
+        const wallet = await prisma.wallet.findFirst({
+            where: { id, hospitalId }
+        });
+
+        if (!wallet) {
+            return res.status(404).json({ error: 'Wallet not found' });
+        }
+
+        if (wallet.status !== 'active') {
+            return res.status(400).json({ error: 'Wallet is not active' });
+        }
+
+        if (wallet.balance < parseFloat(amount)) {
+            return res.status(400).json({ error: 'Insufficient wallet balance' });
+        }
+
+        // Update wallet balance and create transaction
+        const [updatedWallet, transaction] = await prisma.$transaction([
+            prisma.wallet.update({
+                where: { id },
+                data: { balance: { decrement: parseFloat(amount) } },
+                include: { patient: true }
+            }),
+            prisma.walletTransaction.create({
+                data: {
+                    hospitalId,
+                    walletId: id,
+                    type: 'debit',
+                    amount: parseFloat(amount),
+                    description: description || 'Payment',
+                    reference,
+                    performedBy: userId
+                }
+            })
+        ]);
+
+        res.json({
+            wallet: updatedWallet,
+            transaction,
+            message: 'Payment successful'
+        });
+    } catch (error) {
+        console.error('Deduct from wallet error:', error);
+        res.status(500).json({ error: 'Failed to process payment' });
+    }
+});
+
+// GET /api/wallet/:id/transactions - Get wallet transaction history
 router.get('/:id/transactions', async (req, res) => {
     try {
         const { id } = req.params;
-        const transactions = await prisma.walletTransaction.findMany({
-            where: { walletId: id, hospitalId: req.user.hospitalId },
-            orderBy: { date: 'desc' }
+        const { hospitalId } = req;
+        const { limit = 50, offset = 0 } = req.query;
+
+        // Verify wallet belongs to hospital
+        const wallet = await prisma.wallet.findFirst({
+            where: { id, hospitalId }
         });
-        res.json(transactions);
+
+        if (!wallet) {
+            return res.status(404).json({ error: 'Wallet not found' });
+        }
+
+        const transactions = await prisma.walletTransaction.findMany({
+            where: { walletId: id, hospitalId },
+            orderBy: { createdAt: 'desc' },
+            take: parseInt(limit),
+            skip: parseInt(offset)
+        });
+
+        res.json({ transactions });
     } catch (error) {
-        res.status(500).json({ error: 'Error fetching transactions' });
+        console.error('Get transactions error:', error);
+        res.status(500).json({ error: 'Failed to fetch transactions' });
+    }
+});
+
+// PATCH /api/wallet/:id/status - Update wallet status (activate/suspend)
+router.patch('/:id/status', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+        const { hospitalId } = req;
+
+        if (!['active', 'suspended'].includes(status)) {
+            return res.status(400).json({ error: 'Invalid status' });
+        }
+
+        const wallet = await prisma.wallet.findFirst({
+            where: { id, hospitalId }
+        });
+
+        if (!wallet) {
+            return res.status(404).json({ error: 'Wallet not found' });
+        }
+
+        const updatedWallet = await prisma.wallet.update({
+            where: { id },
+            data: { status },
+            include: { patient: true }
+        });
+
+        res.json({ wallet: updatedWallet, message: 'Wallet status updated' });
+    } catch (error) {
+        console.error('Update wallet status error:', error);
+        res.status(500).json({ error: 'Failed to update wallet status' });
     }
 });
 
