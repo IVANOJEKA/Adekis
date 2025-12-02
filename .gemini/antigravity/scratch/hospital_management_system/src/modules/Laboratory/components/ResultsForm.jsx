@@ -1,13 +1,17 @@
 import React from 'react';
 import { Printer, X } from 'lucide-react';
+import { useBranding } from '../../../context/BrandingContext';
 
 const ResultsForm = ({ result, patient, onClose, onPrint }) => {
+    const { branding } = useBranding();
+
     const hospitalInfo = {
-        name: 'Shand Pharmacy & Hospital',
-        address: 'Plot 123, Kampala Road, Kampala, Uganda',
-        phone: '+256 700 000 000',
-        email: 'info@shandpharmacy.com',
-        license: 'UG-HOSP-2024-0001'
+        name: branding.name,
+        address: branding.address,
+        phone: branding.phone,
+        email: branding.email,
+        license: 'UG-HOSP-2024-0001', // This might need to be added to branding settings later
+        logo: branding.logo
     };
 
     const handlePrint = () => {

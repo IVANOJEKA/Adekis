@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
+import { useBranding } from '../../context/BrandingContext';
 import {
     Settings, Users, Shield, DollarSign, Bell, Database, Globe, Palette, Lock, Save, Upload, Download, Key, UserPlus, Edit, Trash2, CheckCircle, X, AlertCircle, Check,
     Wifi, Server, RefreshCw, Loader2, Fingerprint, Smartphone, User
 } from 'lucide-react';
 import PrinterSettings from './components/PrinterSettings';
+import BrandingSettings from './components/BrandingSettings';
 
 const currencies = [
     { code: 'UGX', name: 'Uganda Shilling', symbol: 'UGX' },
@@ -14,6 +16,7 @@ const currencies = [
 
 const SettingsDashboard = () => {
     const { biometricDevices, setBiometricDevices, printerSettings, setPrinterSettings } = useData();
+    const { branding } = useBranding();
     const [activeTab, setActiveTab] = useState('general');
     const [showAddUser, setShowAddUser] = useState(false);
     const [showEditUser, setShowEditUser] = useState(false);
@@ -26,19 +29,6 @@ const SettingsDashboard = () => {
     const [isScanning, setIsScanning] = useState(false);
     const [discoveredDevices, setDiscoveredDevices] = useState([]);
     const [editingDevice, setEditingDevice] = useState(null);
-
-    // State for all settings
-    const [hospitalInfo, setHospitalInfo] = useState({
-        name: 'Shand Pharmacy & Hospital',
-        registrationNumber: 'UG-HOSP-2024-0001',
-        email: 'info@shandpharmacy.com',
-        phone: '+256 700 000 000',
-        address: 'Plot 123, Kampala Road, Kampala, Uganda',
-        openingTime: '08:00',
-        closingTime: '20:00',
-        emergency24_7: true,
-        logo: localStorage.getItem('hospital_logo') || null
-    });
 
     const [billingSettings, setBillingSettings] = useState({
         currency: 'UGX',
@@ -168,7 +158,7 @@ const SettingsDashboard = () => {
 
     const handleExportConfig = () => {
         const config = {
-            hospitalInfo,
+            hospitalInfo: branding,
             billingSettings,
             notificationSettings,
             securitySettings,
@@ -302,156 +292,9 @@ const SettingsDashboard = () => {
 
                 {/* Tab Content */}
                 <div className="p-6">
-                    {/* General Tab */}
+                    {/* General Tab (Branding) */}
                     {activeTab === 'general' && (
-                        <div className="space-y-6">
-                            <div>
-                                <h2 className="text-lg font-bold text-slate-800 mb-4">Hospital Information</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-sm font-medium text-slate-700 mb-2 block">Hospital Name</label>
-                                        <input
-                                            type="text"
-                                            value={hospitalInfo.name}
-                                            onChange={(e) => setHospitalInfo({ ...hospitalInfo, name: e.target.value })}
-                                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-slate-700 mb-2 block">Registration Number</label>
-                                        <input
-                                            type="text"
-                                            value={hospitalInfo.registrationNumber}
-                                            onChange={(e) => setHospitalInfo({ ...hospitalInfo, registrationNumber: e.target.value })}
-                                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-slate-700 mb-2 block">Email</label>
-                                        <input
-                                            type="email"
-                                            value={hospitalInfo.email}
-                                            onChange={(e) => setHospitalInfo({ ...hospitalInfo, email: e.target.value })}
-                                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-slate-700 mb-2 block">Phone</label>
-                                        <input
-                                            type="tel"
-                                            value={hospitalInfo.phone}
-                                            onChange={(e) => setHospitalInfo({ ...hospitalInfo, phone: e.target.value })}
-                                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
-                                        />
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <label className="text-sm font-medium text-slate-700 mb-2 block">Address</label>
-                                        <textarea
-                                            value={hospitalInfo.address}
-                                            onChange={(e) => setHospitalInfo({ ...hospitalInfo, address: e.target.value })}
-                                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none min-h-[80px]"
-                                        />
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <label className="text-sm font-medium text-slate-700 mb-2 block">Hospital Logo</label>
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-24 h-24 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center bg-slate-50 overflow-hidden relative">
-                                                {hospitalInfo.logo ? (
-                                                    <img
-                                                        src={hospitalInfo.logo}
-                                                        alt="Hospital Logo"
-                                                        className="w-full h-full object-contain"
-                                                    />
-                                                ) : (
-                                                    <span className="text-slate-400 text-xs">No Logo</span>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <input
-                                                    type="file"
-                                                    id="logo-upload"
-                                                    accept="image/*"
-                                                    className="hidden"
-                                                    onChange={(e) => {
-                                                        const file = e.target.files[0];
-                                                        if (file) {
-                                                            if (file.size > 5000000) { // 5MB limit
-                                                                showToast('Image size should be less than 5MB');
-                                                                return;
-                                                            }
-                                                            const reader = new FileReader();
-                                                            reader.onloadend = () => {
-                                                                const logoData = reader.result;
-                                                                setHospitalInfo(prev => ({ ...prev, logo: logoData }));
-                                                                // Persist to localStorage immediately
-                                                                localStorage.setItem('hospital_logo', logoData);
-                                                                showToast('Logo uploaded successfully!');
-                                                            };
-                                                            reader.readAsDataURL(file);
-                                                        }
-                                                    }}
-                                                />
-                                                <label
-                                                    htmlFor="logo-upload"
-                                                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark font-medium text-sm flex items-center gap-2 cursor-pointer transition-colors"
-                                                >
-                                                    <Upload size={16} />
-                                                    Upload Logo
-                                                </label>
-                                                <p className="text-xs text-slate-500 mt-2">Max size 5MB. PNG, JPG supported.</p>
-                                                {hospitalInfo.logo && (
-                                                    <button
-                                                        onClick={() => {
-                                                            setHospitalInfo(prev => ({ ...prev, logo: null }));
-                                                            localStorage.removeItem('hospital_logo');
-                                                            showToast('Logo removed');
-                                                        }}
-                                                        className="text-xs text-red-500 hover:text-red-700 mt-1 flex items-center gap-1"
-                                                    >
-                                                        <Trash2 size={12} /> Remove Logo
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="border-t border-slate-200 pt-6">
-                                <h2 className="text-lg font-bold text-slate-800 mb-4">Business Hours</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-sm font-medium text-slate-700 mb-2 block">Opening Time</label>
-                                        <input
-                                            type="time"
-                                            value={hospitalInfo.openingTime}
-                                            onChange={(e) => setHospitalInfo({ ...hospitalInfo, openingTime: e.target.value })}
-                                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-slate-700 mb-2 block">Closing Time</label>
-                                        <input
-                                            type="time"
-                                            value={hospitalInfo.closingTime}
-                                            onChange={(e) => setHospitalInfo({ ...hospitalInfo, closingTime: e.target.value })}
-                                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
-                                        />
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={hospitalInfo.emergency24_7}
-                                                onChange={(e) => setHospitalInfo({ ...hospitalInfo, emergency24_7: e.target.checked })}
-                                                className="w-4 h-4 text-primary rounded"
-                                            />
-                                            <span className="text-sm font-medium text-slate-700">24/7 Emergency Services Available</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <BrandingSettings />
                     )}
 
                     {/* Users Tab */}
@@ -793,8 +636,8 @@ const SettingsDashboard = () => {
                                                     </div>
                                                 </div>
                                                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${device.status === 'Online'
-                                                    ? 'bg-emerald-100 text-emerald-800'
-                                                    : 'bg-red-100 text-red-800'
+                                                        ? 'bg-emerald-100 text-emerald-800'
+                                                        : 'bg-red-100 text-red-800'
                                                     }`}>
                                                     {device.status}
                                                 </span>
@@ -970,7 +813,7 @@ const SettingsDashboard = () => {
                                                     })}
                                                     className="w-4 h-4 text-primary rounded"
                                                 />
-                                                <span className="text-sm text-slate-700">{item.label}</span>
+                                                <span className="text-slate-700">{item.label}</span>
                                             </label>
                                         ))}
                                     </div>
@@ -981,7 +824,7 @@ const SettingsDashboard = () => {
                                     <div className="space-y-3">
                                         {[
                                             { key: 'appointmentReminders', label: 'Appointment reminders' },
-                                            { key: 'testResults', label: 'Test results available' },
+                                            { key: 'testResults', label: 'Test results availability' },
                                             { key: 'payments', label: 'Payment confirmations' }
                                         ].map((item) => (
                                             <label key={item.key} className="flex items-center gap-3 cursor-pointer">
@@ -994,7 +837,7 @@ const SettingsDashboard = () => {
                                                     })}
                                                     className="w-4 h-4 text-primary rounded"
                                                 />
-                                                <span className="text-sm text-slate-700">{item.label}</span>
+                                                <span className="text-slate-700">{item.label}</span>
                                             </label>
                                         ))}
                                     </div>
@@ -1008,74 +851,48 @@ const SettingsDashboard = () => {
                         <div className="space-y-6">
                             <h2 className="text-lg font-bold text-slate-800 mb-4">Appearance Settings</h2>
 
-                            <div>
-                                <label className="text-sm font-medium text-slate-700 mb-2 block">Theme Color</label>
-                                <div className="grid grid-cols-6 gap-3">
-                                    {themeColors.map((theme) => (
-                                        <button
-                                            key={theme.color}
-                                            onClick={() => {
-                                                setSelectedThemeColor(theme.color);
-                                                showToast(`Theme color changed to ${theme.name}`);
-                                            }}
-                                            className="w-full aspect-square rounded-lg border-2 hover:border-slate-400 transition-colors relative"
-                                            style={{
-                                                backgroundColor: theme.color,
-                                                borderColor: selectedThemeColor === theme.color ? '#1e293b' : '#e2e8f0'
-                                            }}
-                                            title={theme.name}
-                                        >
-                                            {selectedThemeColor === theme.color && (
-                                                <CheckCircle size={24} className="text-white absolute inset-0 m-auto" />
-                                            )}
-                                        </button>
-                                    ))}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="border border-slate-200 rounded-xl p-5">
+                                    <h3 className="font-bold text-slate-800 mb-4">Theme Color</h3>
+                                    <div className="flex flex-wrap gap-3">
+                                        {themeColors.map((theme) => (
+                                            <button
+                                                key={theme.color}
+                                                onClick={() => setSelectedThemeColor(theme.color)}
+                                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-110 ${selectedThemeColor === theme.color ? 'ring-2 ring-offset-2 ring-slate-400' : ''}`}
+                                                style={{ backgroundColor: theme.color }}
+                                                title={theme.name}
+                                            >
+                                                {selectedThemeColor === theme.color && <Check size={16} className="text-white" />}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div>
-                                <label className="text-sm font-medium text-slate-700 mb-2 block">Sidebar Theme</label>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <button
-                                        onClick={() => {
-                                            setSidebarTheme('light');
-                                            showToast('Sidebar theme changed to Light');
-                                        }}
-                                        className={`p-4 border-2 rounded-xl text-left hover:shadow-md transition-shadow ${sidebarTheme === 'light' ? 'border-primary' : 'border-slate-200'
-                                            }`}
-                                    >
-                                        <div className="flex items-center gap-2 mb-2">
-                                            {sidebarTheme === 'light' && <CheckCircle size={16} className="text-primary" />}
-                                            <span className="font-medium text-slate-800">Light Theme</span>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <div className="w-4 h-12 bg-white border border-slate-200 rounded"></div>
-                                            <div className="flex-1 space-y-2">
-                                                <div className="h-2 w-full bg-slate-100 rounded"></div>
-                                                <div className="h-2 w-2/3 bg-slate-100 rounded"></div>
+                                <div className="border border-slate-200 rounded-xl p-5">
+                                    <h3 className="font-bold text-slate-800 mb-4">Sidebar Theme</h3>
+                                    <div className="flex gap-4">
+                                        <button
+                                            onClick={() => setSidebarTheme('light')}
+                                            className={`flex-1 p-4 border rounded-xl flex flex-col items-center gap-2 ${sidebarTheme === 'light' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-slate-200 hover:bg-slate-50'}`}
+                                        >
+                                            <div className="w-full h-20 bg-white border border-slate-200 rounded-lg shadow-sm flex overflow-hidden">
+                                                <div className="w-1/3 bg-white border-r border-slate-200"></div>
+                                                <div className="w-2/3 bg-slate-50"></div>
                                             </div>
-                                        </div>
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            setSidebarTheme('dark');
-                                            showToast('Sidebar theme changed to Dark');
-                                        }}
-                                        className={`p-4 border-2 rounded-xl text-left hover:shadow-md transition-shadow ${sidebarTheme === 'dark' ? 'border-primary' : 'border-slate-200'
-                                            }`}
-                                    >
-                                        <div className="flex items-center gap-2 mb-2">
-                                            {sidebarTheme === 'dark' && <CheckCircle size={16} className="text-primary" />}
-                                            <span className="font-medium text-slate-800">Dark Theme</span>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <div className="w-4 h-12 bg-slate-800 rounded"></div>
-                                            <div className="flex-1 space-y-2">
-                                                <div className="h-2 w-full bg-slate-100 rounded"></div>
-                                                <div className="h-2 w-2/3 bg-slate-100 rounded"></div>
+                                            <span className="font-medium text-slate-700">Light</span>
+                                        </button>
+                                        <button
+                                            onClick={() => setSidebarTheme('dark')}
+                                            className={`flex-1 p-4 border rounded-xl flex flex-col items-center gap-2 ${sidebarTheme === 'dark' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-slate-200 hover:bg-slate-50'}`}
+                                        >
+                                            <div className="w-full h-20 bg-white border border-slate-200 rounded-lg shadow-sm flex overflow-hidden">
+                                                <div className="w-1/3 bg-slate-900 border-r border-slate-800"></div>
+                                                <div className="w-2/3 bg-slate-50"></div>
                                             </div>
-                                        </div>
-                                    </button>
+                                            <span className="font-medium text-slate-700">Dark</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1084,166 +901,75 @@ const SettingsDashboard = () => {
                     {/* System Tab */}
                     {activeTab === 'system' && (
                         <div className="space-y-6">
-                            <div className="border border-slate-200 rounded-xl p-5">
-                                <h3 className="font-bold text-slate-800 mb-3">Data Management</h3>
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-                                        <div>
-                                            <h4 className="font-medium text-slate-800">Database Backup</h4>
-                                            <p className="text-sm text-slate-500">Create a full backup of the system database</p>
+                            <h2 className="text-lg font-bold text-slate-800 mb-4">System Maintenance</h2>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="border border-slate-200 rounded-xl p-5">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="p-2 bg-blue-100 rounded-lg">
+                                            <Database size={20} className="text-blue-600" />
                                         </div>
-                                        <button
-                                            onClick={handleBackup}
-                                            className="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-medium flex items-center gap-2"
-                                        >
-                                            <Database size={16} />
-                                            Backup Now
-                                        </button>
+                                        <h3 className="font-bold text-slate-800">Data Backup</h3>
                                     </div>
-                                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-                                        <div>
-                                            <h4 className="font-medium text-slate-800">System Logs</h4>
-                                            <p className="text-sm text-slate-500">View and export system activity logs</p>
+                                    <p className="text-sm text-slate-500 mb-4">Create a full backup of your hospital data including patient records, financial data, and settings.</p>
+                                    <button
+                                        onClick={handleBackup}
+                                        className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center justify-center gap-2"
+                                    >
+                                        <Download size={16} />
+                                        Download Backup
+                                    </button>
+                                </div>
+
+                                <div className="border border-slate-200 rounded-xl p-5">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="p-2 bg-red-100 rounded-lg">
+                                            <AlertCircle size={20} className="text-red-600" />
                                         </div>
-                                        <button
-                                            onClick={() => showToast('Logs exported successfully!')}
-                                            className="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-medium flex items-center gap-2"
-                                        >
-                                            <Download size={16} />
-                                            Export Logs
-                                        </button>
+                                        <h3 className="font-bold text-slate-800">System Reset</h3>
                                     </div>
+                                    <p className="text-sm text-slate-500 mb-4">Reset system settings to default. This will not delete patient data but will reset configuration.</p>
+                                    <button
+                                        onClick={() => {
+                                            if (window.confirm('Are you sure you want to reset system settings? This cannot be undone.')) {
+                                                showToast('System settings reset to defaults');
+                                            }
+                                        }}
+                                        className="w-full py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 font-medium flex items-center justify-center gap-2"
+                                    >
+                                        <RefreshCw size={16} />
+                                        Reset Settings
+                                    </button>
                                 </div>
                             </div>
 
-                            <div className="border border-slate-200 rounded-xl p-5">
-                                <h3 className="font-bold text-slate-800 mb-3">Security Settings</h3>
-                                <div className="space-y-3">
-                                    <label className="flex items-center gap-3 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={securitySettings.strongPasswords}
-                                            onChange={(e) => setSecuritySettings({ ...securitySettings, strongPasswords: e.target.checked })}
-                                            className="w-4 h-4 text-primary rounded"
-                                        />
-                                        <div>
-                                            <span className="font-medium text-slate-800 block">Enforce Strong Passwords</span>
-                                            <span className="text-xs text-slate-500">Require minimum 8 characters, numbers, and symbols</span>
-                                        </div>
-                                    </label>
-                                    <label className="flex items-center gap-3 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={securitySettings.twoFactor}
-                                            onChange={(e) => setSecuritySettings({ ...securitySettings, twoFactor: e.target.checked })}
-                                            className="w-4 h-4 text-primary rounded"
-                                        />
-                                        <div>
-                                            <span className="font-medium text-slate-800 block">Two-Factor Authentication</span>
-                                            <span className="text-xs text-slate-500">Enable 2FA for administrator accounts</span>
-                                        </div>
-                                    </label>
-                                    <label className="flex items-center gap-3 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={securitySettings.autoLogout}
-                                            onChange={(e) => setSecuritySettings({ ...securitySettings, autoLogout: e.target.checked })}
-                                            className="w-4 h-4 text-primary rounded"
-                                        />
-                                        <div>
-                                            <span className="font-medium text-slate-800 block">Automatic Logout</span>
-                                            <span className="text-xs text-slate-500">Logout inactive users after 30 minutes</span>
-                                        </div>
-                                    </label>
+                            <div className="border-t border-slate-200 pt-6">
+                                <h3 className="font-bold text-slate-800 mb-4">System Information</h3>
+                                <div className="bg-slate-50 rounded-xl p-4 space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Version</span>
+                                        <span className="font-mono text-slate-700">v2.4.0</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Last Updated</span>
+                                        <span className="font-mono text-slate-700">2024-01-15</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">License Status</span>
+                                        <span className="text-emerald-600 font-medium flex items-center gap-1">
+                                            <CheckCircle size={14} /> Active
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Database Size</span>
+                                        <span className="font-mono text-slate-700">45.2 MB</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     )}
                 </div>
             </div>
-
-            {/* Device Configuration Modal */}
-            {editingDevice && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                            <h3 className="font-bold text-lg text-slate-800">
-                                {editingDevice.isNew ? 'Install New Device' : 'Configure Device'}
-                            </h3>
-                            <button onClick={() => setEditingDevice(null)} className="text-slate-400 hover:text-slate-600">
-                                <X size={24} />
-                            </button>
-                        </div>
-                        <form onSubmit={handleSaveDevice} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Device Name</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={editingDevice.deviceName}
-                                    onChange={(e) => setEditingDevice({ ...editingDevice, deviceName: e.target.value })}
-                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Location</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={editingDevice.location}
-                                    onChange={(e) => setEditingDevice({ ...editingDevice, location: e.target.value })}
-                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">IP Address</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={editingDevice.ipAddress}
-                                    onChange={(e) => setEditingDevice({ ...editingDevice, ipAddress: e.target.value })}
-                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Model</label>
-                                    <input
-                                        type="text"
-                                        value={editingDevice.model}
-                                        onChange={(e) => setEditingDevice({ ...editingDevice, model: e.target.value })}
-                                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Manufacturer</label>
-                                    <input
-                                        type="text"
-                                        value={editingDevice.manufacturer}
-                                        onChange={(e) => setEditingDevice({ ...editingDevice, manufacturer: e.target.value })}
-                                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                    />
-                                </div>
-                            </div>
-                            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
-                                <button
-                                    type="button"
-                                    onClick={() => setEditingDevice(null)}
-                                    className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-                                >
-                                    {editingDevice.isNew ? 'Install Device' : 'Save Changes'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

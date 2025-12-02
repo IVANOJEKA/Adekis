@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../../context/DataContext';
+import { useBranding } from '../../../context/BrandingContext';
 import {
     FileText, User, Stethoscope, Activity, Brain, Pill, Save,
     Printer, X, Calendar, Clock, AlertCircle, CheckCircle, Plus, Trash2,
@@ -8,6 +9,7 @@ import {
 
 const ClinicalDocumentation = () => {
     const { patients, clinicalRecords, systemSettings, triageQueue } = useData();
+    const { branding } = useBranding();
     const [activeModal, setActiveModal] = useState(null); // 'soap' or 'referral'
     const [selectedDoc, setSelectedDoc] = useState(null);
     const [selectedPatient, setSelectedPatient] = useState(null);
@@ -34,13 +36,13 @@ const ClinicalDocumentation = () => {
     });
 
     const hospitalInfo = {
-        name: systemSettings?.hospitalName || 'MedCore Hospital',
-        address: '123 Health Street, Medical District',
-        city: 'Kampala, Uganda',
-        phone: '+256 123 456 789',
-        email: 'info@medcorehospital.com',
-        website: 'www.medcorehospital.com',
-        logo: 'MC' // Initials for logo
+        name: branding.name,
+        address: branding.address,
+        city: '', // branding.address usually contains city
+        phone: branding.phone,
+        email: branding.email,
+        website: branding.website,
+        logo: branding.logo // This might be an image URL now
     };
 
     // Auto-populate SOAP Note from triage data when patient selected
@@ -363,8 +365,12 @@ const ClinicalDocumentation = () => {
                             <div className="border-b-4 border-blue-600 pb-4 mb-6">
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-4">
-                                        <div className="w-16 h-16 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-2xl">
-                                            {hospitalInfo.logo}
+                                        <div className="w-16 h-16 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-2xl overflow-hidden">
+                                            {hospitalInfo.logo && hospitalInfo.logo.startsWith('data:image') ? (
+                                                <img src={hospitalInfo.logo} alt="Logo" className="w-full h-full object-cover" />
+                                            ) : (
+                                                hospitalInfo.name.substring(0, 2).toUpperCase()
+                                            )}
                                         </div>
                                         <div>
                                             <h1 className="text-2xl font-bold text-gray-900">{hospitalInfo.name}</h1>
@@ -465,8 +471,12 @@ const ClinicalDocumentation = () => {
                             <div className="border-b-4 border-purple-600 pb-4 mb-6">
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-4">
-                                        <div className="w-16 h-16 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-2xl">
-                                            {hospitalInfo.logo}
+                                        <div className="w-16 h-16 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-2xl overflow-hidden">
+                                            {hospitalInfo.logo && hospitalInfo.logo.startsWith('data:image') ? (
+                                                <img src={hospitalInfo.logo} alt="Logo" className="w-full h-full object-cover" />
+                                            ) : (
+                                                hospitalInfo.name.substring(0, 2).toUpperCase()
+                                            )}
                                         </div>
                                         <div>
                                             <h1 className="text-2xl font-bold text-gray-900">{hospitalInfo.name}</h1>

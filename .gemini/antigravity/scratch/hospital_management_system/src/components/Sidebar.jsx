@@ -1,10 +1,12 @@
 import React, { useMemo } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useBranding } from '../context/BrandingContext';
 import { LogOut } from 'lucide-react';
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
   const { currentUser, isAuthenticated, hasPermission, logout } = useAuth();
+  const { branding } = useBranding();
   const navigate = useNavigate();
 
   const allMenuItems = [
@@ -28,7 +30,6 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     { path: '/hr', label: 'HR Management', permission: 'hr' },
     { path: '/services', label: 'Services & Prices', permission: 'services' },
     { path: '/wallet', label: 'HMS Wallet', permission: 'wallet' },
-    { path: '/debt', label: 'Debt Management', permission: 'debt' },
     { path: '/communication', label: 'Communication', permission: 'communication' },
     { path: '/camps', label: 'Health Camps', permission: 'camps' },
     { path: '/queue', label: 'Queue Mgmt', permission: 'queue' },
@@ -62,10 +63,17 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       >
         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100">
           <div className="flex items-center gap-2 font-bold text-xl tracking-wide text-slate-800">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-sm">
-              <span className="text-white">A+</span>
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm overflow-hidden"
+              style={{ backgroundColor: branding.primaryColor }}
+            >
+              {branding.logo && branding.logo.startsWith('data:image') ? (
+                <img src={branding.logo} alt="Logo" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-white">{branding.name.substring(0, 2).toUpperCase()}</span>
+              )}
             </div>
-            <span>Adekis+</span>
+            <span>{branding.name}</span>
           </div>
           <button onClick={toggleSidebar} className="lg:hidden text-slate-500 hover:text-slate-700">
             <span className="font-bold">X</span>
