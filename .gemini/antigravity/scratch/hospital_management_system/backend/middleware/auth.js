@@ -11,12 +11,13 @@ const authMiddleware = (req, res, next) => {
         }
 
         // Verify token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-in-production');
 
         // Attach user info to request
         req.user = decoded;
         next();
     } catch (error) {
+        console.error('Auth Middleware Error:', error.message);
         return res.status(401).json({ error: 'Invalid or expired token' });
     }
 };

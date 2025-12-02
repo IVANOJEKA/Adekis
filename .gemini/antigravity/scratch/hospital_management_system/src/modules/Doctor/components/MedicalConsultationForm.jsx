@@ -213,7 +213,7 @@ const MedicalConsultationForm = ({ patientId, onClose, onSave }) => {
         }, 0);
     };
 
-    const handleSaveForm = () => {
+    const handleSaveForm = async () => {
         const consultationRecord = {
             id: `CON-${String(clinicalRecords.length + 1).padStart(3, '0')}`,
             ...formData,

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Shield, Building2, FileText, TrendingUp, CheckCircle, Clock, XCircle, DollarSign, Users, Search, Plus, Eye, Edit, Download, Activity, CreditCard, AlertCircle, Loader } from 'lucide-react';
-import { insuranceProviders, getAllProviders } from '../../data/insuranceProviders';
-import { insuranceService } from '../../services/insuranceService';
+import { useData } from '../../context/DataContext';
+import { insuranceAPI } from '../../services/api';
 
 const InsuranceDashboard = () => {
     const [activeTab, setActiveTab] = useState('overview');
@@ -29,14 +29,16 @@ const InsuranceDashboard = () => {
     });
     const [submittingClaim, setSubmittingClaim] = useState(false);
 
-    // Mock Data - Claims (Initial)
-    const [claims, setClaims] = useState([
-        { id: 'CLM-001', patient: 'John Smith', company: 'Jubilee Insurance', amount: 150000, service: 'General Consultation', date: '2024-01-20', status: 'Pending', claimDate: '2024-01-21' },
-        { id: 'CLM-002', patient: 'Mary Johnson', company: 'UAP Insurance', amount: 250000, service: 'Specialist Consultation', date: '2024-01-19', status: 'Approved', claimDate: '2024-01-20' },
-        { id: 'CLM-003', patient: 'Sarah Wilson', company: 'AAR Insurance', amount: 180000, service: 'Ultrasound Scan', date: '2024-01-18', status: 'Processing', claimDate: '2024-01-19' },
-    ]);
+    const {
+        insuranceProviders = [],
+        insuranceClaims = [],
+        addInsuranceProvider,
+        submitInsuranceClaim
+    } = useData();
 
-    const allProviders = getAllProviders();
+    // Use claims from context
+    const claims = insuranceClaims || [];
+    const allProviders = insuranceProviders || [];
 
     const handleVerify = async () => {
         if (!verificationData.providerId || !verificationData.memberNumber) return;
@@ -44,10 +46,10 @@ const InsuranceDashboard = () => {
         setVerificationData(prev => ({ ...prev, loading: true, error: null, result: null }));
 
         try {
-            const result = await insuranceService.verifyPatient(
-                verificationData.providerId,
-                verificationData.memberNumber
-            );
+            const result = await insuranceAPI.verifyCoverage({
+                providerId: verificationData.providerId,
+                memberNumber: verificationData.memberNumber
+            });
             setVerificationData(prev => ({ ...prev, result, loading: false }));
         } catch (err) {
             setVerificationData(prev => ({ ...prev, error: err.message, loading: false }));
@@ -59,33 +61,22 @@ const InsuranceDashboard = () => {
         setSubmittingClaim(true);
 
         try {
-            const result = await insuranceService.submitClaim({
+            const result = await submitInsuranceClaim({
                 providerId: newClaim.providerId,
                 amount: parseInt(newClaim.amount),
                 service: newClaim.service,
-                patientId: 'PAT-TEMP' // In real app, this comes from patient selection
+                patientId: 'PAT-TEMP', // In real app, this comes from patient selection
+                patientName: newClaim.patientName,
+                memberNumber: newClaim.memberNumber,
+                notes: newClaim.notes
             });
 
-            if (result.success) {
-                // Add to local list
-                const providerName = allProviders.find(p => p.id === newClaim.providerId)?.name || 'Unknown';
-                const newClaimEntry = {
-                    id: result.claimId,
-                    patient: newClaim.patientName,
-                    company: providerName,
-                    amount: parseInt(newClaim.amount),
-                    service: newClaim.service,
-                    date: new Date().toISOString().split('T')[0],
-                    status: result.status,
-                    claimDate: new Date().toISOString().split('T')[0]
-                };
-
-                setClaims([newClaimEntry, ...claims]);
+            if (result) {
                 setShowNewClaimModal(false);
                 setNewClaim({ patientName: '', memberNumber: '', providerId: '', service: '', amount: '', notes: '' });
-                alert(`Claim submitted successfully! Tracking ID: ${result.trackingNumber || result.claimId}`);
+                alert(`Claim submitted successfully! Tracking ID: ${result.trackingNumber || result.claimId || 'N/A'}`);
             } else {
-                alert(`Submission Failed: ${result.message}`);
+                alert(`Submission Failed: ${result?.message || 'Unknown error'}`);
             }
         } catch (err) {
             alert(`Error: ${err.message}`);

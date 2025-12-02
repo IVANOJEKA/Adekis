@@ -75,7 +75,7 @@ const PrescriptionManager = ({ triggerNewPrescription }) => {
         });
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         // Save prescription via API
         const prescriptionData = {

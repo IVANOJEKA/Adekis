@@ -47,6 +47,23 @@ model Hospital {
   attendance     Attendance[]
   leaveRequests  LeaveRequest[]
   payrolls       Payroll[]
+  insuranceProviders InsuranceProvider[]
+  insuranceClaims    InsuranceClaim[]
+  wallets            Wallet[]
+  walletTransactions WalletTransaction[]
+  operatingRooms     OperatingRoom[]
+  surgeries          Surgery[]
+  admissions         Admission[]
+  medicalRecords     MedicalRecord[]
+  clinicalNotes      ClinicalNote[]
+  maternityPatients  MaternityPatient[]
+  ancVisits          ANCVisit[]
+  deliveries         Delivery[]
+  newborns           Newborn[]
+  pncVisits          PNCVisit[]
+  labInventory       LabInventory[]
+  labInventoryTransactions LabInventoryTransaction[]
+  triageRecords      TriageRecord[]
 }
 
 // ==================== USERS & AUTHENTICATION ====================
@@ -105,7 +122,8 @@ model Patient {
   appointments Appointment[]
   prescriptions Prescription[]
   labTests     LabTest[]
-  medicalRecords MedicalRecord[]
+  maternityRecords MaternityPatient[]
+  triageRecords TriageRecord[]
   
   @@index([hospitalId])
   @@index([patientId])
@@ -170,9 +188,16 @@ model LabTest {
   testName    String
   testType    String
   orderedBy   String
+  orderedByRole String?  // Doctor, Reception, EMR
+  priority    String   @default("Normal")  // Normal, Urgent, STAT
   status      String   @default("pending")  // pending, in-progress, completed
   results     Json?    // Test results as JSON
   notes       String?
+  resultsValidatedBy String?
+  resultsValidatedAt DateTime?
+  printedAt   DateTime?
+  printedBy   String?
+  accessLog   Json?    // Track who viewed the results
   orderedAt   DateTime @default(now())
   completedAt DateTime?
   createdAt   DateTime @default(now())
@@ -185,28 +210,52 @@ model LabTest {
   @@index([hospitalId])
   @@index([patientId])
   @@index([testId])
+  @@index([status])
+  @@index([priority])
 }
 
-// ==================== MEDICAL RECORDS ====================
+// ==================== LAB INVENTORY ====================
 
-model MedicalRecord {
-  id          String   @id @default(uuid())
-  patientId   String
-  recordType  String   // consultation, diagnosis, procedure, etc.
-  recordDate  DateTime
-  diagnosis   String?
-  treatment   String?
-  notes       String?
-  attachments String[] // URLs to attached documents
-  recordedBy  String   // User ID of the doctor/nurse
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  patient     Patient @relation(fields: [patientId], references: [id])
+model LabInventory {
+  id            String   @id @default(uuid())
+  hospitalId    String
+  itemName      String
+  itemCode      String   @unique
+  category      String   // Reagent, Equipment, Consumable
+  unit          String   // ml, pieces, kg, etc.
+  quantity      Int
+  minimumLevel  Int
+  supplier      String?
+  expiryDate    DateTime?
+  costPerUnit   Float
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
   
-  @@index([patientId])
-  @@index([recordDate])
+  // Relations
+  hospital      Hospital @relation(fields: [hospitalId], references: [id])
+  transactions  LabInventoryTransaction[]
+  
+  @@index([hospitalId])
+  @@index([itemCode])
+  @@index([category])
+}
+
+model LabInventoryTransaction {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  inventoryId String
+  type        String   // In, Out, Adjusted
+  quantity    Int
+  reason      String
+  performedBy String
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  inventory   LabInventory @relation(fields: [inventoryId], references: [id])
+  
+  @@index([hospitalId])
+  @@index([inventoryId])
 }
 
 // ==================== BILLING ====================
@@ -349,6 +398,7 @@ model Bed {
   // Relations
   hospital    Hospital @relation(fields: [hospitalId], references: [id])
   ward        Ward @relation(fields: [wardId], references: [id])
+  admissions  Admission[]
   
   @@index([hospitalId])
   @@index([wardId])
@@ -575,6 +625,155 @@ model LeaveRequest {
   @@index([employeeId])
 }
 
+// ==================== BED MANAGEMENT (EXTENDED) ====================
+
+model Admission {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  patientId   String
+  bedId       String
+  bed         Bed      @relation(fields: [bedId], references: [id])
+  admissionDate DateTime @default(now())
+  dischargeDate DateTime?
+  diagnosis   String
+  doctorId    String?
+  status      String   @default("Admitted") // Admitted, Discharged
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+
+  @@index([hospitalId])
+  @@index([patientId])
+  @@index([bedId])
+}
+
+// ==================== THEATRE / SURGERY ====================
+
+model OperatingRoom {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  name        String
+  type        String   // General, Cardiac, Orthopedic
+  status      String   @default("Available") // Available, In Use, Cleaning, Maintenance
+  equipment   Json?    // Array of equipment names
+  surgeries   Surgery[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+
+  @@index([hospitalId])
+}
+
+model Surgery {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  patientId   String
+  patientName String
+  roomId      String
+  room        OperatingRoom @relation(fields: [roomId], references: [id])
+  procedureName String
+  surgeonId   String
+  surgeonName String
+  date        DateTime
+  startTime   String
+  endTime     String?
+  status      String   @default("Scheduled") // Scheduled, In Progress, Completed, Cancelled
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+
+  @@index([hospitalId])
+  @@index([patientId])
+  @@index([roomId])
+  @@index([surgeonId])
+}
+
+// ==================== INSURANCE ====================
+
+model InsuranceProvider {
+  id          String   @id @default(uuid())
+  name        String
+  type        String   // Private, Public, HMO
+  coverageTypes String[] // Outpatient, Inpatient, Dental, Optical
+  apiEnabled  Boolean  @default(false)
+  email       String?
+  phone       String?
+  website     String?
+  status      String   @default("Active")
+  hospitalId  String
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  claims      InsuranceClaim[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([hospitalId])
+}
+
+model InsuranceClaim {
+  id            String   @id @default(uuid())
+  providerId    String
+  provider      InsuranceProvider @relation(fields: [providerId], references: [id])
+  patientId     String
+  patientName   String   // Snapshot in case patient record changes
+  memberNumber  String
+  service       String
+  amount        Float
+  status        String   // Pending, Approved, Rejected, Processing
+  notes         String?
+  submissionDate DateTime @default(now())
+  hospitalId    String
+  hospital      Hospital @relation(fields: [hospitalId], references: [id])
+
+  @@index([hospitalId])
+  @@index([providerId])
+  @@index([patientId])
+}
+
+// ==================== WALLET ====================
+
+model Wallet {
+  id            String   @id @default(uuid())
+  patientId     String?  // Optional, can be standalone
+  cardholderName String
+  cardNumber    String   @unique
+  packageType   String   // Platinum, Gold, Family, Standard
+  balance       Float    @default(0)
+  status        String   @default("Active")
+  expiryDate    String
+  members       String[] // Names of family members covered
+  transactions  WalletTransaction[]
+  hospitalId    String
+  hospital      Hospital @relation(fields: [hospitalId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([hospitalId])
+  @@index([patientId])
+}
+
+model WalletTransaction {
+  id          String   @id @default(uuid())
+  walletId    String
+  wallet      Wallet   @relation(fields: [walletId], references: [id])
+  type        String   // Credit, Debit
+  amount      Float
+  description String
+  balanceAfter Float
+  date        DateTime @default(now())
+  hospitalId  String
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+
+  @@index([hospitalId])
+  @@index([walletId])
+}
+
 model Payroll {
   id          String   @id @default(uuid())
   hospitalId  String
@@ -598,3 +797,196 @@ model Payroll {
   @@index([month])
 }
 
+// ==================== EMR (Electronic Medical Records) ====================
+
+model MedicalRecord {
+  id              String   @id @default(uuid())
+  hospitalId      String
+  patientId       String
+  recordType      String   // Consultation, Diagnosis, Procedure, Test Result
+  title           String
+  description     String   @db.Text
+  diagnosis       String?
+  treatment       String?  @db.Text
+  doctorId        String
+  doctorName      String
+  department      String?
+  date            DateTime @default(now())
+  attachments     Json?    // Array of file references: [{filename, url, type, size}]
+  vitals          Json?    // {bloodPressure, temperature, heartRate, etc}
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  hospital        Hospital @relation(fields: [hospitalId], references: [id])
+
+  @@index([hospitalId])
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([date])
+}
+
+model ClinicalNote {
+  id              String   @id @default(uuid())
+  hospitalId      String
+  patientId       String
+  noteType        String   // Progress Note, Discharge Summary, Consultation Note
+  content         String   @db.Text
+  authorId        String
+  authorName      String
+  authorRole      String   // Doctor, Nurse, etc.
+  date            DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  hospital        Hospital @relation(fields: [hospitalId], references: [id])
+
+  @@index([hospitalId])
+  @@index([patientId])
+  @@index([date])
+}
+
+// ==================== MATERNITY ====================
+
+model MaternityPatient {
+  id              String   @id @default(uuid())
+  hospitalId      String
+  patientId       String   @unique
+  patientName     String
+  edd             DateTime // Expected Delivery Date
+  gravida         Int      // Number of pregnancies
+  para            Int      // Number of births
+  bloodGroup      String?
+  riskLevel       String   @default("Low") // Low, Medium, High
+  status          String   @default("Antenatal") // Antenatal, Labor, Postnatal, Discharged
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  hospital        Hospital @relation(fields: [hospitalId], references: [id])
+  patient         Patient  @relation(fields: [patientId], references: [id])
+  ancVisits       ANCVisit[]
+  deliveries      Delivery[]
+  pncVisits       PNCVisit[]
+
+  @@index([hospitalId])
+  @@index([patientId])
+}
+
+model ANCVisit {
+  id              String   @id @default(uuid())
+  hospitalId      String
+  maternityPatientId String
+  visitNumber     Int
+  visitDate       DateTime @default(now())
+  gestationalAge  Int      // Weeks
+  weight          Float?
+  bloodPressure   String?
+  fundalHeight    Float?   // cm
+  fetalHeartRate  Int?     // bpm
+  complaints      String?
+  examination     String?
+  nextVisitDate   DateTime?
+  attendedBy      String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  hospital        Hospital @relation(fields: [hospitalId], references: [id])
+  maternityPatient MaternityPatient @relation(fields: [maternityPatientId], references: [id])
+
+  @@index([hospitalId])
+  @@index([maternityPatientId])
+}
+
+model Delivery {
+  id              String   @id @default(uuid())
+  hospitalId      String
+  maternityPatientId String
+  deliveryDate    DateTime @default(now())
+  deliveryTime    String
+  deliveryType    String   // Normal, C-Section, Assisted
+  outcome         String   // Live Birth, Stillbirth
+  complications   String?
+  attendedBy      String
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  hospital        Hospital @relation(fields: [hospitalId], references: [id])
+  maternityPatient MaternityPatient @relation(fields: [maternityPatientId], references: [id])
+  newborns        Newborn[]
+
+  @@index([hospitalId])
+  @@index([maternityPatientId])
+}
+
+model Newborn {
+  id              String   @id @default(uuid())
+  hospitalId      String
+  deliveryId      String
+  gender          String
+  weight          Float    // kg
+  apgarScore1     Int?
+  apgarScore5     Int?
+  status          String   @default("Healthy") // Healthy, NICU, Deceased
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  hospital        Hospital @relation(fields: [hospitalId], references: [id])
+  delivery        Delivery @relation(fields: [deliveryId], references: [id])
+
+  @@index([hospitalId])
+  @@index([deliveryId])
+}
+
+model PNCVisit {
+  id              String   @id @default(uuid())
+  hospitalId      String
+  maternityPatientId String
+  visitDate       DateTime @default(now())
+  daysPostpartum  Int
+  motherCondition String?
+  babyCondition   String?
+  complications   String?
+  attendedBy      String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  hospital        Hospital @relation(fields: [hospitalId], references: [id])
+  maternityPatient MaternityPatient @relation(fields: [maternityPatientId], references: [id])
+
+  @@index([hospitalId])
+  @@index([maternityPatientId])
+}
+
+// ==================== TRIAGE ====================
+
+model TriageRecord {
+  id              String   @id @default(uuid())
+  hospitalId      String
+  patientId       String
+  visitId         String?  // Optional link to an appointment or queue entry
+  vitals          Json     // { bp, temp, hr, spo2, weight, height, bmi, respRate }
+  chiefComplaint  String?
+  priority        String   @default("Normal") // Normal, Urgent, Emergency
+  notes           String?
+  nurseId         String
+  nurseName       String
+  status          String   @default("Completed")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  hospital        Hospital @relation(fields: [hospitalId], references: [id])
+  patient         Patient  @relation(fields: [patientId], references: [id])
+
+  @@index([hospitalId])
+  @@index([patientId])
+  @@index([createdAt])
+}

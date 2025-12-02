@@ -9,14 +9,11 @@ import {
 const TheatreDashboard = () => {
     const {
         operatingRooms,
-        setOperatingRooms,
-        surgerySchedules,
-        setSurgerySchedules,
+        surgeries: surgerySchedules, // Alias to match existing code
         surgicalChecklists,
-        anaesthesiaRecords,
         surgicalEquipment,
-        patients,
-        setPatients
+        scheduleSurgery,
+        updateSurgeryStatus
     } = useData();
 
     const [activeTab, setActiveTab] = useState('schedule');
@@ -162,8 +159,8 @@ const TheatreDashboard = () => {
                     <div
                         key={room.id}
                         className={`bg-white rounded-lg shadow-sm border-2 ${room.status === 'In Use' ? 'border-red-300' :
-                                room.status === 'Available' ? 'border-green-300' :
-                                    'border-yellow-300'
+                            room.status === 'Available' ? 'border-green-300' :
+                                'border-yellow-300'
                             } p-5`}
                     >
                         <div className="flex justify-between items-start mb-3">
@@ -414,8 +411,8 @@ const TheatreDashboard = () => {
                         key={tab}
                         onClick={() => setActiveTab(tab)}
                         className={`flex-1 px-4 py-2 rounded-md font-medium text-sm transition-colors ${activeTab === tab
-                                ? 'bg-blue-600 text-white'
-                                : 'text-gray-600 hover:bg-gray-100'
+                            ? 'bg-blue-600 text-white'
+                            : 'text-gray-600 hover:bg-gray-100'
                             }`}
                     >
                         {tab.charAt(0).toUpperCase() + tab.slice(1)}

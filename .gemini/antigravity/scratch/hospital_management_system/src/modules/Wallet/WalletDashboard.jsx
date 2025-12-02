@@ -4,7 +4,7 @@ import { useData } from '../../context/DataContext';
 import QRCodeSVG from '../../components/QRCode';
 
 const WalletDashboard = () => {
-    const { walletRecords, setWalletRecords } = useData();
+    const { walletRecords, createWallet, topUpWallet } = useData();
     const [activeTab, setActiveTab] = useState('my-wallets');
     const [showBalance, setShowBalance] = useState({});
     const [showSubscribeModal, setShowSubscribeModal] = useState(false);
@@ -160,48 +160,6 @@ const WalletDashboard = () => {
         navigator.clipboard.writeText(cardNumber.replace(/\*/g, ''));
         showToast('Card number copied to clipboard!');
     };
-
-    const handleSubscribe = (pkg) => {
-        setSelectedPackage(pkg);
-        setSubscribeForm({ cardholderName: '', familyMembers: '', initialTopUp: '' });
-    };
-
-    const handleCreateWallet = () => {
-        if (!selectedPackage || !subscribeForm.cardholderName || !subscribeForm.initialTopUp) {
-            showToast('Please fill all required fields', 'error');
-            return;
-        }
-
-        const familyMembersList = subscribeForm.familyMembers
-            ? subscribeForm.familyMembers.split(',').map(m => m.trim()).filter(m => m)
-            : [];
-
-        const newWallet = {
-            id: `WAL-${String(walletRecords.length + 1).padStart(3, '0')}`,
-            cardNumber: generateCardNumber(),
-            cardholder: subscribeForm.cardholderName,
-            packageType: selectedPackage.id,
-            balance: parseInt(subscribeForm.initialTopUp) || 0,
-            expiryDate: generateExpiryDate(),
-            status: 'Active',
-            members: [subscribeForm.cardholderName, ...familyMembersList],
-            joinedDate: new Date().toISOString().split('T')[0],
-            lastTransaction: new Date().toISOString().split('T')[0]
-        };
-
-        setWalletRecords([...walletRecords, newWallet]);
-        showToast(`✓ ${selectedPackage.name} wallet created successfully! Card: ${newWallet.cardNumber}`);
-        setShowSubscribeModal(false);
-        setSelectedPackage(null);
-        setSubscribeForm({ cardholderName: '', familyMembers: '', initialTopUp: '' });
-    };
-
-    const handleTopUp = (wallet) => {
-        setSelectedWallet(wallet);
-        setTopUpForm({ amount: '', paymentMethod: 'Mobile Money' });
-        setShowTopUpModal(true);
-    };
-
     const handleConfirmTopUp = () => {
         if (!topUpForm.amount || parseInt(topUpForm.amount) <= 0) {
             showToast('Please enter a valid amount', 'error');

@@ -82,9 +82,11 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
+        console.log(`Login attempt for: ${email}`);
 
         // Validation
         if (!email || !password) {
+            console.error('Login failed: Missing email or password');
             return res.status(400).json({ error: 'Email and password required' });
         }
 
@@ -103,11 +105,13 @@ router.post('/login', async (req, res) => {
         });
 
         if (!user) {
+            console.error(`Login failed: User not found for email ${email}`);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
         // Check if user is active
         if (user.status !== 'active') {
+            console.error(`Login failed: User ${email} is inactive`);
             return res.status(403).json({ error: 'Account is inactive. Contact administrator.' });
         }
 
@@ -115,6 +119,7 @@ router.post('/login', async (req, res) => {
         const isValidPassword = await bcrypt.compare(password, user.passwordHash);
 
         if (!isValidPassword) {
+            console.error(`Login failed: Invalid password for ${email}`);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
@@ -136,6 +141,8 @@ router.post('/login', async (req, res) => {
             JWT_SECRET,
             { expiresIn: '24h' }
         );
+
+        console.log(`Login successful for ${email}`);
 
         // Return user data (excluding password hash)
         const { passwordHash, ...userData } = user;

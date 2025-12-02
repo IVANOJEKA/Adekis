@@ -4,7 +4,7 @@ import { useData } from '../../../context/DataContext';
 import { getCareLevelColor } from '../../../utils/homeCareUtils';
 
 const HomeCarePatientsList = ({ onEnrollPatient, onViewPatient, onScheduleVisit }) => {
-    const { homeCarePatientsData } = useData();
+    const { homeCarePatientsData = [] } = useData();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [careLevelFilter, setCareLevelFilter] = useState('all');

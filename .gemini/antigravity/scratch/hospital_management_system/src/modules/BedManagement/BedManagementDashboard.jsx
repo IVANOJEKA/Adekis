@@ -6,7 +6,20 @@ import PatientTreatmentDetailsModal from './components/PatientTreatmentDetailsMo
 import DischargeSummaryModal from './components/DischargeSummaryModal';
 
 const BedManagementDashboard = () => {
-    const { wards, beds, admissions, patients, setPatients, setAdmissions, setBeds, addBill, financialRecords: bills, users, prescriptions, medicationLogs, setMedicationLogs, systemSettings } = useData();
+    const {
+        wards,
+        beds,
+        admissions,
+        patients,
+        addBill,
+        financialRecords: bills,
+        users,
+        prescriptions,
+        medicationLogs,
+        systemSettings,
+        admitPatientToBed,
+        dischargePatientFromBed
+    } = useData();
     const doctors = users?.filter(u => u.role === 'Doctor') || [];
     const { formatCurrency } = useCurrency();
     const [selectedWardId, setSelectedWardId] = useState(wards[0]?.id || null);
@@ -65,102 +78,6 @@ const BedManagementDashboard = () => {
         const totalPaid = patientBills
             .filter(b => b.status === 'Paid')
             .reduce((sum, bill) => sum + bill.amount, 0);
-        const balanceDue = totalBillAmount - totalPaid;
-
-        return { totalBillAmount, totalPaid, balanceDue, isBillFullyPaid: balanceDue <= 0 };
-    };
-
-    // Handle admission
-    const handleAdmit = (bedId, patientId, diagnosis, doctorId = 'U-001') => {
-        const bed = beds.find(b => b.id === bedId);
-        if (!bed || bed.status !== 'Available') return;
-
-        // Check if patient needs OPD → IPD upgrade
-        const patient = patients.find(p => p.id === patientId);
-        if (!patient) {
-            alert('Patient not found');
-            return;
-        }
-
-        let upgradeMessage = '';
-
-        // If patient is OPD, automatically upgrade to IPD
-        if (patient.patientCategory === 'OPD') {
-            const opdFee = systemSettings.consultationFees.OPD;
-            const ipdFee = systemSettings.consultationFees.IPD;
-            const feeDifference = ipdFee - opdFee;
-
-            // Create financial record for the upgrade fee difference
-            const upgradeFeeRecord = {
-                id: `FIN-${Date.now()}-UPG`,
-                patientId: patientId,
-                type: 'IPD Upgrade Fee',
-                category: 'IPD',
-                description: 'OPD to IPD conversion upon admission',
-                amount: feeDifference,
-                status: 'Pending',
-                paymentDate: null,
-                paymentMethod: null,
-                receiptId: null,
-                admissionId: `ADM-${Date.now()}`
-            };
-
-            // Add the upgrade fee to bills
-            addBill(upgradeFeeRecord);
-
-            // Update patient category to IPD
-            setPatients(patients.map(p =>
-                p.id === patientId
-                    ? { ...p, patientCategory: 'IPD', upgradedToIPD: true, upgradeDate: new Date().toISOString() }
-                    : p
-            ));
-
-            upgradeMessage = `\n\n✨ Patient upgraded from OPD to IPD\nAdditional Fee: ${formatCurrency(feeDifference)} (Pending)`;
-        }
-
-        const newAdmission = {
-            id: `ADM-${Date.now()}`,
-            patientId,
-            bedId,
-            wardId: bed.wardId,
-            admissionDate: new Date().toISOString(),
-            diagnosis,
-            doctorId,
-            status: 'Admitted'
-        };
-
-        setAdmissions([...admissions, newAdmission]);
-        setBeds(beds.map(b => b.id === bedId ? { ...b, status: 'Occupied', patientId } : b));
-        setShowAdmitModal(false);
-        setSelectedBed(null);
-
-        alert(`✅ Patient Admitted Successfully!\n\nAdmission ID: ${newAdmission.id}\nBed: ${bed.bedNumber}\nWard: ${bed.wardId}${upgradeMessage}`);
-    };
-
-    // Handle transfer
-    const handleTransfer = (admissionId, newBedId) => {
-        const admission = admissions.find(a => a.id === admissionId);
-        if (!admission) return;
-
-        const newBed = beds.find(b => b.id === newBedId);
-        if (!newBed || newBed.status !== 'Available') return;
-
-        // Update admission
-        setAdmissions(admissions.map(a =>
-            a.id === admissionId
-                ? { ...a, bedId: newBedId, wardId: newBed.wardId }
-                : a
-        ));
-
-        // Update beds
-        setBeds(beds.map(b => {
-            if (b.id === admission.bedId) return { ...b, status: 'Available', patientId: null };
-            if (b.id === newBedId) return { ...b, status: 'Occupied', patientId: admission.patientId };
-            return b;
-        }));
-
-        setShowTransferModal(false);
-        setSelectedBed(null);
     };
 
     // Handle discharge with bill validation

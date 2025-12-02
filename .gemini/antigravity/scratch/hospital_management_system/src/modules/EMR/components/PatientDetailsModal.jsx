@@ -13,7 +13,8 @@ const PatientDetailsModal = ({ patient, onClose }) => {
         nursingNotes = [],
         carePlans = [],
         cases = [],
-        clinicalRecords = []
+        medicalRecords = [],
+        clinicalNotes = []
     } = useData();
 
     const { formatCurrency } = useCurrency();
@@ -28,7 +29,8 @@ const PatientDetailsModal = ({ patient, onClose }) => {
     const patientNursingNotes = nursingNotes.filter(n => n.patientId === patient.id);
     const patientCarePlans = carePlans.filter(c => c.patientId === patient.id);
     const patientCases = cases.filter(c => c.patientId === patient.id);
-    const patientClinicalRecords = clinicalRecords.filter(r => r.patientId === patient.id);
+    const patientMedicalRecords = medicalRecords.filter(r => r.patientId === patient.id);
+    const patientClinicalNotes = clinicalNotes.filter(n => n.patientId === patient.id);
 
     const totalDue = patientBills.filter(r => r.status === 'Pending').reduce((sum, r) => sum + r.amount, 0);
     const currentAdmission = patientAdmissions.find(a => a.status === 'Admitted');
@@ -163,8 +165,8 @@ const PatientDetailsModal = ({ patient, onClose }) => {
                                                         <p className="text-xs text-slate-500">{caseItem.id} • {formatDate(caseItem.createdAt)}</p>
                                                     </div>
                                                     <span className={`px-2 py-1 rounded-full text-xs font-bold ${caseItem.status === 'Open' ? 'bg-amber-100 text-amber-700' :
-                                                            caseItem.status === 'Closed' ? 'bg-slate-100 text-slate-700' :
-                                                                'bg-blue-100 text-blue-700'
+                                                        caseItem.status === 'Closed' ? 'bg-slate-100 text-slate-700' :
+                                                            'bg-blue-100 text-blue-700'
                                                         }`}>
                                                         {caseItem.status}
                                                     </span>
@@ -241,84 +243,60 @@ const PatientDetailsModal = ({ patient, onClose }) => {
                                 )}
                             </div>
 
-                            {/* Nursing Notes */}
+                            {/* Clinical Notes */}
                             <div className="bg-white border border-slate-200 rounded-xl p-5">
                                 <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
                                     <ClipboardList size={20} className="text-blue-600" />
-                                    Nursing Notes
+                                    Clinical Notes
                                 </h3>
-                                {patientNursingNotes.length > 0 ? (
+                                {patientClinicalNotes.length > 0 ? (
                                     <div className="space-y-3 max-h-64 overflow-y-auto">
-                                        {patientNursingNotes.map(note => (
+                                        {patientClinicalNotes.map(note => (
                                             <div key={note.id} className="p-3 border border-slate-100 rounded-lg">
                                                 <div className="flex justify-between items-start mb-2">
-                                                    <span className="text-xs font-semibold text-blue-600">{note.category}</span>
-                                                    <span className="text-xs text-slate-500">{formatDate(note.timestamp)}</span>
+                                                    <span className="text-xs font-semibold text-blue-600">{note.noteType}</span>
+                                                    <span className="text-xs text-slate-500">{formatDate(note.date)}</span>
                                                 </div>
-                                                <p className="text-sm text-slate-700">{note.note}</p>
-                                                <p className="text-xs text-slate-500 mt-1">— {note.nurseName}</p>
+                                                <p className="text-sm text-slate-700">{note.content}</p>
+                                                <p className="text-xs text-slate-500 mt-1">— {note.authorName} ({note.authorRole})</p>
                                             </div>
                                         ))}
                                     </div>
                                 ) : (
-                                    <p className="text-center text-slate-500 py-6">No nursing notes recorded</p>
+                                    <p className="text-center text-slate-500 py-6">No clinical notes recorded</p>
                                 )}
                             </div>
 
-                            {/* Care Plans */}
-                            {patientCarePlans.length > 0 && (
-                                <div className="bg-white border border-slate-200 rounded-xl p-5">
-                                    <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                        <Stethoscope size={20} className="text-green-600" />
-                                        Care Plans
-                                    </h3>
+                            {/* Medical Records (Consultations, Procedures, etc.) */}
+                            <div className="bg-white border border-slate-200 rounded-xl p-5">
+                                <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    <FileText size={20} className="text-purple-600" />
+                                    Medical Records
+                                </h3>
+                                {patientMedicalRecords.length > 0 ? (
                                     <div className="space-y-3">
-                                        {patientCarePlans.map(plan => (
-                                            <div key={plan.id} className="p-3 border border-slate-100 rounded-lg">
+                                        {patientMedicalRecords.map(record => (
+                                            <div key={record.id} className="p-3 border border-slate-100 rounded-lg">
                                                 <div className="flex justify-between items-start mb-2">
-                                                    <p className="font-semibold text-slate-800">{plan.diagnosis}</p>
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${plan.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'
-                                                        }`}>
-                                                        {plan.status}
+                                                    <div>
+                                                        <p className="font-semibold text-slate-800">{record.title}</p>
+                                                        <p className="text-xs text-slate-500">{record.recordType} • {formatDate(record.date)}</p>
+                                                    </div>
+                                                    <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full">
+                                                        Dr. {record.doctorName}
                                                     </span>
                                                 </div>
-                                                <p className="text-sm text-slate-600 mb-2"><strong>Goal:</strong> {plan.goal}</p>
-                                                <div className="text-xs">
-                                                    <p className="text-slate-500 mb-1"><strong>Interventions:</strong></p>
-                                                    <ul className="list-disc list-inside text-slate-600 space-y-1">
-                                                        {plan.interventions.map((intervention, idx) => (
-                                                            <li key={idx}>{intervention}</li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
+                                                {record.diagnosis && (
+                                                    <p className="text-sm text-slate-700 mb-1"><strong>Diagnosis:</strong> {record.diagnosis}</p>
+                                                )}
+                                                <p className="text-sm text-slate-600 line-clamp-2">{record.description}</p>
                                             </div>
                                         ))}
                                     </div>
-                                </div>
-                            )}
-
-                            {/* Clinical Records (Lab, Radiology, etc.) */}
-                            {patientClinicalRecords.length > 0 && (
-                                <div className="bg-white border border-slate-200 rounded-xl p-5">
-                                    <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                        <TestTube size={20} className="text-purple-600" />
-                                        Clinical Test Results
-                                    </h3>
-                                    <div className="space-y-2">
-                                        {patientClinicalRecords.map(record => (
-                                            <div key={record.id} className="p-3 border border-slate-100 rounded-lg flex justify-between items-center">
-                                                <div>
-                                                    <p className="font-semibold text-slate-800">{record.test || record.exam}</p>
-                                                    <p className="text-xs text-slate-500">{record.id} • {record.date}</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-sm font-semibold text-slate-700">{record.result}</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+                                ) : (
+                                    <p className="text-center text-slate-500 py-6">No medical records found</p>
+                                )}
+                            </div>
                         </div>
                     )}
 
@@ -342,8 +320,8 @@ const PatientDetailsModal = ({ patient, onClose }) => {
                                                         <p className="text-xs text-slate-500">{prescription.date}</p>
                                                     </div>
                                                     <span className={`px-2 py-1 rounded-full text-xs font-bold ${prescription.status === 'Pending' ? 'bg-amber-100 text-amber-700' :
-                                                            prescription.status === 'Dispensed' ? 'bg-emerald-100 text-emerald-700' :
-                                                                'bg-blue-100 text-blue-700'
+                                                        prescription.status === 'Dispensed' ? 'bg-emerald-100 text-emerald-700' :
+                                                            'bg-blue-100 text-blue-700'
                                                         }`}>
                                                         {prescription.status}
                                                     </span>
@@ -414,9 +392,9 @@ const PatientDetailsModal = ({ patient, onClose }) => {
                                             <div key={bill.id} className="flex justify-between items-center p-4 border border-slate-100 rounded-lg hover:bg-slate-50 transition-colors">
                                                 <div className="flex items-center gap-3">
                                                     <div className={`p-2 rounded-lg ${bill.type === 'Consultation' ? 'bg-blue-100 text-blue-600' :
-                                                            bill.type === 'Lab Tests' ? 'bg-purple-100 text-purple-600' :
-                                                                bill.type === 'Surgery' ? 'bg-red-100 text-red-600' :
-                                                                    'bg-slate-100 text-slate-600'
+                                                        bill.type === 'Lab Tests' ? 'bg-purple-100 text-purple-600' :
+                                                            bill.type === 'Surgery' ? 'bg-red-100 text-red-600' :
+                                                                'bg-slate-100 text-slate-600'
                                                         }`}>
                                                         <CreditCard size={20} />
                                                     </div>

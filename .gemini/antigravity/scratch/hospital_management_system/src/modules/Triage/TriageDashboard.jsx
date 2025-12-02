@@ -3,43 +3,12 @@ import { AlertCircle, Heart, Thermometer, Activity, Wind, Droplets, Clock, User,
 import { useData } from '../../context/DataContext';
 
 const TriageDashboard = () => {
-    const { patients, triageQueue, setTriageQueue, queueEntries, setQueueEntries } = useData();
+    const { patients = [], triageRecords = [], createTriageRecord, queueEntries = [], setQueueEntries } = useData();
     const [showTriageModal, setShowTriageModal] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
-    // Mock triage data for existing records if triageQueue is empty
-    useState(() => {
-        if (triageQueue.length === 0) {
-            setTriageQueue([
-                {
-                    id: 'T-001',
-                    patientId: 'P-001',
-                    patientName: 'Mary Johnson',
-                    age: 45,
-                    gender: 'Female',
-                    arrivalTime: '09:30 AM',
-                    chiefComplaint: 'Chest pain and shortness of breath',
-                    vitals: { bp: '140/90', temp: 37.2, pulse: 95, rr: 22, spo2: 94, weight: 68, height: 165 },
-                    triageLevel: 'Emergency',
-                    status: 'Waiting',
-                    assignedDoctor: null
-                },
-                {
-                    id: 'T-002',
-                    patientId: 'W-001',
-                    patientName: 'John Doe',
-                    age: 32,
-                    gender: 'Male',
-                    arrivalTime: '10:15 AM',
-                    chiefComplaint: 'Severe headache for 3 days',
-                    vitals: { bp: '130/85', temp: 36.8, pulse: 78, rr: 18, spo2: 98, weight: 75, height: 178 },
-                    triageLevel: 'Urgent',
-                    status: 'Waiting',
-                    assignedDoctor: null
-                }
-            ]);
-        }
-    });
+    // Use triageRecords from API instead of local state
+    const triageQueue = triageRecords || [];
 
     const [triageFormData, setTriageFormData] = useState({
         patientId: '',
@@ -66,7 +35,7 @@ const TriageDashboard = () => {
         return triageLevels.find(t => t.value === level) || triageLevels[3];
     };
 
-    const handleTriageSubmit = (e) => {
+    const handleTriageSubmit = async (e) => {
         e.preventDefault();
         const patient = patients.find(p => p.id === triageFormData.patientId);
 
@@ -81,75 +50,74 @@ const TriageDashboard = () => {
             return;
         }
 
-        const newTriage = {
-            id: `T-${String(triageQueue.length + 1).padStart(3, '0')}`,
-            patientId: triageFormData.patientId,
-            patientName: patient.name,
-            age: patient.age || 'N/A',
-            gender: patient.gender || 'N/A',
-            arrivalTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-            chiefComplaint: triageFormData.chiefComplaint,
-            vitals: {
-                bp: triageFormData.bp,
-                temp: parseFloat(triageFormData.temp),
-                pulse: parseInt(triageFormData.pulse),
-                rr: parseInt(triageFormData.rr),
-                spo2: parseInt(triageFormData.spo2),
-                weight: parseFloat(triageFormData.weight),
-                height: parseFloat(triageFormData.height)
-            },
-            triageLevel: triageFormData.triageLevel,
-            status: 'Waiting',
-            assignedDoctor: null,
-            notes: triageFormData.notes
-        };
+        try {
+            const newTriageData = {
+                patientId: triageFormData.patientId,
+                chiefComplaint: triageFormData.chiefComplaint,
+                vitals: {
+                    bp: triageFormData.bp,
+                    temp: parseFloat(triageFormData.temp),
+                    pulse: parseInt(triageFormData.pulse),
+                    rr: parseInt(triageFormData.rr),
+                    spo2: parseInt(triageFormData.spo2),
+                    weight: parseFloat(triageFormData.weight),
+                    height: parseFloat(triageFormData.height)
+                },
+                priority: triageFormData.triageLevel,
+                notes: triageFormData.notes
+            };
 
-        setTriageQueue([newTriage, ...triageQueue]);
+            await createTriageRecord(newTriageData);
 
-        // Add to Doctor Queue
-        const priorityMap = {
-            'Emergency': 'Emergency',
-            'Urgent': 'Urgent',
-            'Less Urgent': 'Normal',
-            'Non-Urgent': 'Normal'
-        };
+            // Add to Doctor Queue (Mock for now, ideally backend handles this trigger)
+            const priorityMap = {
+                'Emergency': 'Emergency',
+                'Urgent': 'Urgent',
+                'Less Urgent': 'Normal',
+                'Non-Urgent': 'Normal'
+            };
 
-        const doctorQueueEntry = {
-            id: `Q-${Date.now()}`,
-            queueNumber: `D-${String(queueEntries.filter(e => e.department === 'Doctor').length + 1).padStart(3, '0')}`,
-            patientId: patient.id,
-            patientName: patient.name,
-            department: 'Doctor',
-            service: 'General Consultation',
-            priority: priorityMap[triageFormData.triageLevel] || 'Normal',
-            status: 'Waiting',
-            checkInTime: new Date().toISOString(),
-            calledTime: null,
-            serviceStartTime: null,
-            serviceEndTime: null,
-            waitTime: 0,
-            estimatedWait: 15,
-            assignedStaff: null,
-            notes: `Triage: ${triageFormData.chiefComplaint}`,
-            transferredFrom: 'Triage'
-        };
+            const doctorQueueEntry = {
+                id: `Q-${Date.now()}`,
+                queueNumber: `D-${String(queueEntries.filter(e => e.department === 'Doctor').length + 1).padStart(3, '0')}`,
+                patientId: patient.id,
+                patientName: patient.name,
+                department: 'Doctor',
+                service: 'General Consultation',
+                priority: priorityMap[triageFormData.triageLevel] || 'Normal',
+                status: 'Waiting',
+                checkInTime: new Date().toISOString(),
+                calledTime: null,
+                serviceStartTime: null,
+                serviceEndTime: null,
+                waitTime: 0,
+                estimatedWait: 15,
+                assignedStaff: null,
+                notes: `Triage: ${triageFormData.chiefComplaint}`,
+                transferredFrom: 'Triage'
+            };
 
-        setQueueEntries([...queueEntries, doctorQueueEntry]);
+            setQueueEntries([...queueEntries, doctorQueueEntry]);
 
-        setShowTriageModal(false);
-        setTriageFormData({
-            patientId: '',
-            chiefComplaint: '',
-            bp: '',
-            temp: '',
-            pulse: '',
-            rr: '',
-            spo2: '',
-            weight: '',
-            height: '',
-            triageLevel: 'Less Urgent',
-            notes: ''
-        });
+            setShowTriageModal(false);
+            setTriageFormData({
+                patientId: '',
+                chiefComplaint: '',
+                bp: '',
+                temp: '',
+                pulse: '',
+                rr: '',
+                spo2: '',
+                weight: '',
+                height: '',
+                triageLevel: 'Less Urgent',
+                notes: ''
+            });
+            alert('Triage assessment completed successfully!');
+        } catch (error) {
+            console.error("Failed to create triage record:", error);
+            alert("Failed to save triage record. Please try again.");
+        }
     };
 
     const filteredQueue = triageQueue.filter(t =>

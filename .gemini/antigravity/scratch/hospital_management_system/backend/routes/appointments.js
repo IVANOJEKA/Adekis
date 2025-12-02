@@ -22,10 +22,7 @@ router.get('/', async (req, res) => {
 
         const appointments = await prisma.appointment.findMany({
             where,
-            orderBy: [{ appointmentDate: 'desc' }, {
-                appointmentTime: '
-
-desc' }],
+            orderBy: [{ appointmentDate: 'desc' }, { appointmentTime: 'desc' }],
             include: {
                 patient: {
                     select: {

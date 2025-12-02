@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { patientsAPI, bloodBankAPI, ambulanceAPI, hrAPI } from '../services/api';
+import { patientsAPI, bloodBankAPI, ambulanceAPI, hrAPI, insuranceAPI } from '../services/api';
 
 const DataContext = createContext();
 
@@ -70,11 +70,7 @@ const initialSystemSettings = {
     hospitalPhone: '+256 700 000000'
 };
 
-const initialInsuranceData = [
-    { id: 'INS-001', provider: 'AAR Insurance', patientId: 'P-001', policyNo: 'AAR-12345', amount: 500000, status: 'Active', expiryDate: '2024-12-31' },
-    { id: 'INS-002', provider: 'Jubilee Insurance', patientId: 'P-002', policyNo: 'JUB-67890', amount: 750000, status: 'Active', expiryDate: '2024-11-30' },
-    { id: 'INS-003', provider: 'UAP Insurance', patientId: 'P-003', policyNo: 'UAP-54321', amount: 1000000, status: 'Pending', expiryDate: '2025-01-15' },
-];
+
 
 const initialServicesData = [
     // Consultation Services
@@ -1909,6 +1905,49 @@ const initialCasesData = [
 ];
 
 export const DataProvider = ({ children }) => {
+    // Insurance Module State - USING API
+    const [insuranceProviders, setInsuranceProviders] = useState([]);
+    const [insuranceClaims, setInsuranceClaims] = useState([]);
+
+    // Fetch Insurance data from API
+    useEffect(() => {
+        const fetchInsuranceData = async () => {
+            try {
+                const [providers, claims] = await Promise.all([
+                    insuranceAPI.getProviders(),
+                    insuranceAPI.getClaims()
+                ]);
+                setInsuranceProviders(providers);
+                setInsuranceClaims(claims);
+            } catch (error) {
+                console.error('Error fetching insurance data:', error);
+            }
+        };
+        fetchInsuranceData();
+    }, []);
+
+    const addInsuranceProvider = async (providerData) => {
+        try {
+            const newProvider = await insuranceAPI.addProvider(providerData);
+            setInsuranceProviders(prev => [...prev, newProvider]);
+            return newProvider;
+        } catch (error) {
+            console.error('Error adding insurance provider:', error);
+            throw error;
+        }
+    };
+
+    const submitInsuranceClaim = async (claimData) => {
+        try {
+            const newClaim = await insuranceAPI.submitClaim(claimData);
+            setInsuranceClaims(prev => [newClaim, ...prev]);
+            return newClaim;
+        } catch (error) {
+            console.error('Error submitting insurance claim:', error);
+            throw error;
+        }
+    };
+
     // Load data from localStorage or use initial data
     // Load data from localStorage or use initial data
     const [patients, setPatients] = useState([]);
@@ -1917,7 +1956,10 @@ export const DataProvider = ({ children }) => {
 
     // Fetch patients from API on mount
     useEffect(() => {
-        fetchPatients();
+        const token = localStorage.getItem('hms_auth_token');
+        if (token) {
+            fetchPatients();
+        }
     }, []);
 
     const fetchPatients = async () => {
@@ -1975,7 +2017,10 @@ export const DataProvider = ({ children }) => {
     const [appointmentsLoading, setAppointmentsLoading] = useState(true);
 
     useEffect(() => {
-        fetchAppointments();
+        const token = localStorage.getItem('hms_auth_token');
+        if (token) {
+            fetchAppointments();
+        }
     }, []);
 
     const fetchAppointments = async () => {
@@ -2020,7 +2065,10 @@ export const DataProvider = ({ children }) => {
     const [billsLoading, setBillsLoading] = useState(true);
 
     useEffect(() => {
-        fetchBills();
+        const token = localStorage.getItem('hms_auth_token');
+        if (token) {
+            fetchBills();
+        }
     }, []);
 
     const fetchBills = async () => {
@@ -2065,7 +2113,10 @@ export const DataProvider = ({ children }) => {
     const [queueLoading, setQueueLoading] = useState(true);
 
     useEffect(() => {
-        fetchQueue();
+        const token = localStorage.getItem('hms_auth_token');
+        if (token) {
+            fetchQueue();
+        }
     }, []);
 
     const fetchQueue = async () => {
@@ -2110,7 +2161,10 @@ export const DataProvider = ({ children }) => {
     const [servicesLoading, setServicesLoading] = useState(true);
 
     useEffect(() => {
-        fetchServices();
+        const token = localStorage.getItem('hms_auth_token');
+        if (token) {
+            fetchServices();
+        }
     }, []);
 
     const fetchServices = async () => {
@@ -2186,10 +2240,6 @@ export const DataProvider = ({ children }) => {
         return saved ? JSON.parse(saved) : [];
     });
 
-    const [insuranceRecords, setInsuranceRecords] = useState(() => {
-        const saved = localStorage.getItem('hms_insurance');
-        return saved ? JSON.parse(saved) : initialInsuranceData;
-    });
 
     const [servicesData, setServicesData] = useState(() => {
         const saved = localStorage.getItem('hms_services');
@@ -2226,7 +2276,10 @@ export const DataProvider = ({ children }) => {
     const [inventoryLoading, setInventoryLoading] = useState(true);
 
     useEffect(() => {
-        fetchInventory();
+        const token = localStorage.getItem('hms_auth_token');
+        if (token) {
+            fetchInventory();
+        }
     }, []);
 
     const fetchInventory = async () => {
@@ -2283,7 +2336,10 @@ export const DataProvider = ({ children }) => {
     const [prescriptionsLoading, setPrescriptionsLoading] = useState(true);
 
     useEffect(() => {
-        fetchPrescriptions();
+        const token = localStorage.getItem('hms_auth_token');
+        if (token) {
+            fetchPrescriptions();
+        }
     }, []);
 
     const fetchPrescriptions = async () => {
@@ -2390,6 +2446,9 @@ export const DataProvider = ({ children }) => {
     // Fetch HR data from API
     useEffect(() => {
         const fetchHRData = async () => {
+            const token = localStorage.getItem('hms_auth_token');
+            if (!token) return;
+
             try {
                 const [emps, leaves, att, pay] = await Promise.all([
                     hrAPI.getEmployees(),
@@ -2453,6 +2512,16 @@ export const DataProvider = ({ children }) => {
         return saved ? JSON.parse(saved) : initialEmployeeDocumentsData;
     });
 
+    const [biometricDevices, setBiometricDevices] = useState(() => {
+        const saved = localStorage.getItem('hms_biometric_devices');
+        return saved ? JSON.parse(saved) : initialBiometricDevicesData;
+    });
+
+    const [attendancePolicies, setAttendancePolicies] = useState(() => {
+        const saved = localStorage.getItem('hms_attendance_policies');
+        return saved ? JSON.parse(saved) : initialAttendancePoliciesData;
+    });
+
     // Maternity Module State
     const [maternityPatients, setMaternityPatients] = useState(() => {
         const saved = localStorage.getItem('hms_maternity_patients');
@@ -2487,6 +2556,9 @@ export const DataProvider = ({ children }) => {
     // Fetch ambulance data from API
     useEffect(() => {
         const fetchAmbulanceData = async () => {
+            const token = localStorage.getItem('hms_auth_token');
+            if (!token) return;
+
             try {
                 const [fleet, requests, trips] = await Promise.all([
                     ambulanceAPI.getFleet(),
@@ -2654,7 +2726,7 @@ export const DataProvider = ({ children }) => {
     useEffect(() => { localStorage.setItem('hms_users', JSON.stringify(users)); }, [users]);
     useEffect(() => { localStorage.setItem('hms_settings', JSON.stringify(systemSettings)); }, [systemSettings]);
     useEffect(() => { localStorage.setItem('hms_reset_history', JSON.stringify(resetHistory)); }, [resetHistory]);
-    useEffect(() => { localStorage.setItem('hms_insurance', JSON.stringify(insuranceRecords)); }, [insuranceRecords]);
+
     useEffect(() => { localStorage.setItem('hms_services', JSON.stringify(servicesData)); }, [servicesData]);
     useEffect(() => { localStorage.setItem('hms_debt', JSON.stringify(debtRecords)); }, [debtRecords]);
     useEffect(() => { localStorage.setItem('hms_wallet', JSON.stringify(walletRecords)); }, [walletRecords]);
@@ -2724,7 +2796,7 @@ export const DataProvider = ({ children }) => {
 
 
     const resetAllData = () => {
-        const totalRecords = patients.length + financialRecords.length + clinicalRecords.length + users.length + insuranceRecords.length + servicesData.length + debtRecords.length + walletRecords.length + wards.length + beds.length + admissions.length + inventory.length + prescriptions.length + Object.keys(systemSettings).length;
+        const totalRecords = patients.length + financialRecords.length + clinicalRecords.length + users.length + insuranceProviders.length + insuranceClaims.length + servicesData.length + debtRecords.length + walletRecords.length + wards.length + beds.length + admissions.length + inventory.length + prescriptions.length + Object.keys(systemSettings).length;
         setPatients([]);
         setFinancialRecords([]);
         setClinicalRecords([]);
@@ -2846,7 +2918,8 @@ export const DataProvider = ({ children }) => {
                 setClinicalRecords(initialClinicalData);
                 setUsers(initialUserData);
                 setSystemSettings(initialSystemSettings);
-                setInsuranceRecords(initialInsuranceData);
+                setInsuranceProviders([]);
+                setInsuranceClaims([]);
                 setServicesData(initialServicesData);
                 setDebtRecords(initialDebtData);
                 setWalletRecords(initialWalletData);
@@ -2898,6 +2971,9 @@ export const DataProvider = ({ children }) => {
     // Fetch blood bank data from API
     useEffect(() => {
         const fetchBloodBankData = async () => {
+            const token = localStorage.getItem('hms_auth_token');
+            if (!token) return;
+
             try {
                 const [inventory, donors, requests] = await Promise.all([
                     bloodBankAPI.getInventory(),
@@ -2921,7 +2997,7 @@ export const DataProvider = ({ children }) => {
         clinical: clinicalRecords.length,
         users: users.length,
         settings: Object.keys(systemSettings).length,
-        insurance: insuranceRecords.length,
+        insurance: insuranceProviders.length,
         services: servicesData.length,
         debt: debtRecords.length,
         wallet: walletRecords.length,
@@ -2931,7 +3007,7 @@ export const DataProvider = ({ children }) => {
         inventory: inventory.length,
         prescriptions: prescriptions.length,
         camps: camps.length,
-        total: patients.length + financialRecords.length + clinicalRecords.length + users.length + insuranceRecords.length + servicesData.length + debtRecords.length + walletRecords.length + wards.length + beds.length + admissions.length + inventory.length + prescriptions.length + camps.length
+        total: patients.length + financialRecords.length + clinicalRecords.length + users.length + insuranceProviders.length + insuranceClaims.length + servicesData.length + debtRecords.length + walletRecords.length + wards.length + beds.length + admissions.length + inventory.length + prescriptions.length + camps.length
     });
 
     // Billing Helper Functions (LEGACY - for backward compatibility)
@@ -3166,25 +3242,20 @@ export const DataProvider = ({ children }) => {
         }
     };
 
-
     const value = {
-        // Data
-        patients,
-        financialRecords,
-        clinicalRecords,
-        users,
-        systemSettings,
         resetHistory,
-        insuranceRecords,
         servicesData,
         debtRecords,
         walletRecords,
         wards,
         beds,
         admissions,
+        admissions,
+        patients,
         inventory,
         prescriptions,
         camps,
+        financialRecords,
         // Nursing Module Data
         vitalSigns,
         nursingNotes,
@@ -3202,22 +3273,9 @@ export const DataProvider = ({ children }) => {
         updatePatient,
         deletePatient,
         fetchPatients,
-        loading,
-        error,
-        setFinancialRecords,
-        setClinicalRecords,
-        setUsers,
-        setSystemSettings,
-        setInsuranceRecords,
-        setServicesData,
-        setDebtRecords,
-        setWalletRecords,
-        setWards,
-        setBeds,
-        setAdmissions,
-        setInventory,
         setPrescriptions,
         setCamps,
+        setFinancialRecords,
         // Nursing Module Setters
         setVitalSigns,
         setNursingNotes,
@@ -3351,7 +3409,6 @@ export const DataProvider = ({ children }) => {
         loginHistory, setLoginHistory,
         securitySettings, setSecuritySettings,
         loginHistory, setLoginHistory,
-        securitySettings, setSecuritySettings,
         backupHistory, setBackupHistory,
 
         // User Data
@@ -3365,20 +3422,6 @@ export const DataProvider = ({ children }) => {
         // Printer Settings
         printerSettings,
         setPrinterSettings,
-
-        // System Settings
-        systemSettings,
-        setSystemSettings,
-
-        // Billing Functions
-        addBill,  // API version (new)
-        addBillLegacy,  // Legacy helper (old)
-        updateBillStatus,
-
-        // Blood Bank Functions (API-BACKED)
-        addBloodDonor,
-        recordDonation,
-        createBloodRequest,
         approveBloodRequest,
         rejectBloodRequest,
         updateBloodInventory,

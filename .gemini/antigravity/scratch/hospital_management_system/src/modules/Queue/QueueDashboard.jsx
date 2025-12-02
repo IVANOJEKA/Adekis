@@ -8,7 +8,7 @@ import {
 import QueueDisplay from './QueueDisplay';
 
 const QueueDashboard = () => {
-    const { queueEntries = [], addQueueEntry, updateQueueEntry, patients = [], addBill } = useData();
+    const { queueEntries = [], setQueueEntries, addQueueEntry, updateQueueEntry, patients = [], addBill } = useData();
     const [selectedDepartment, setSelectedDepartment] = useState('All');
     const [showCheckInModal, setShowCheckInModal] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -97,7 +97,7 @@ const QueueDashboard = () => {
     };
 
     // Check-in new patient
-    const handleCheckIn = (e) => {
+    const handleCheckIn = async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
 

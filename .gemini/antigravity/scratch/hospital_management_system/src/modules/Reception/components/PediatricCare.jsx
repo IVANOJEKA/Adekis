@@ -20,7 +20,7 @@ const PediatricCare = () => {
     // Auto-generate ID for preview
     const nextId = generatePatientId(patients, 'pediatric');
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         // Calculate age from DOB

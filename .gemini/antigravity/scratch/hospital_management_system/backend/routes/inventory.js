@@ -1,12 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
-const { authenticateToken } = require('./auth');
+const { authMiddleware, attachHospitalId } = require('../middleware/auth');
 
 const prisma = new PrismaClient();
 
+
+// Apply authentication middleware
+router.use(authMiddleware);
+router.use(attachHospitalId);
+
 // Get all inventory items
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', async (req, res) => {
     try {
         const items = await prisma.inventoryItem.findMany({
             where: { hospitalId: req.user.hospitalId },
@@ -19,7 +24,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Add new inventory item
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', async (req, res) => {
     try {
         const { name, category, stock, unit, minStock, price, supplier, expiryDate, batchNumber, location } = req.body;
 
@@ -50,7 +55,7 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // Update inventory item
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const { name, category, stock, unit, minStock, price, supplier, expiryDate, batchNumber, location } = req.body;
@@ -90,7 +95,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 });
 
 // Delete inventory item
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const deleted = await prisma.inventoryItem.deleteMany({

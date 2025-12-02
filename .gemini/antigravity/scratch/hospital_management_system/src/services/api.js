@@ -81,7 +81,7 @@ export const patientsAPI = {
     // Get all patients with optional search and pagination
     getAll: async (params = {}) => {
         const response = await api.get('/patients', { params });
-        return response.data;
+        return response.data.patients || response.data;
     },
 
     // Get single patient by ID
@@ -98,17 +98,13 @@ export const patientsAPI = {
 
     // Update patient
     update: async (id, patientData) => {
+        const response = await api.put(`/patients/${id}`, patientData);
+        return response.data.patient;
     },
 
-    // Create user
-    create: async (userData) => {
-        const response = await api.post('/users', userData);
-        return response.data;
-    },
-
-    // Update user
-    update: async (id, userData) => {
-        const response = await api.put(`/users/${id}`, userData);
+    // Delete patient
+    delete: async (id) => {
+        const response = await api.delete(`/patients/${id}`);
         return response.data;
     }
 };
@@ -237,7 +233,306 @@ export const casesAPI = {
     }
 };
 
-;
+// ==================== INSURANCE API ====================
+
+export const insuranceAPI = {
+    getProviders: async () => {
+        const response = await api.get('/insurance');
+        return response.data;
+    },
+
+    addProvider: async (providerData) => {
+        const response = await api.post('/insurance', providerData);
+        return response.data;
+    },
+
+    verifyCoverage: async (verificationData) => {
+        const response = await api.post('/insurance/verify', verificationData);
+        return response.data;
+    },
+
+    getClaims: async () => {
+        const response = await api.get('/insurance/claims');
+        return response.data;
+    },
+
+    submitClaim: async (claimData) => {
+        const response = await api.post('/insurance/claims', claimData);
+        return response.data;
+    },
+
+    updateClaimStatus: async (id, statusData) => {
+        const response = await api.put(`/insurance/claims/${id}/status`, statusData);
+        return response.data;
+    }
+};
+
+// ==================== WALLET API ====================
+
+export const walletAPI = {
+    getAll: async () => {
+        const response = await api.get('/wallet');
+        return response.data;
+    },
+
+    create: async (walletData) => {
+        const response = await api.post('/wallet', walletData);
+        return response.data;
+    },
+
+    topUp: async (id, topUpData) => {
+        const response = await api.post(`/wallet/${id}/topup`, topUpData);
+        return response.data;
+    },
+
+    getTransactions: async (id) => {
+        const response = await api.get(`/wallet/${id}/transactions`);
+        return response.data;
+    }
+};
+
+// ==================== BED MANAGEMENT API ====================
+
+export const bedManagementAPI = {
+    getWards: async () => {
+        const response = await api.get('/bed-management/wards');
+        return response.data;
+    },
+
+    createWard: async (wardData) => {
+        const response = await api.post('/bed-management/wards', wardData);
+        return response.data;
+    },
+
+    getBeds: async () => {
+        const response = await api.get('/bed-management/beds');
+        return response.data;
+    },
+
+    addBed: async (bedData) => {
+        const response = await api.post('/bed-management/beds', bedData);
+        return response.data;
+    },
+
+    admitPatient: async (admissionData) => {
+        const response = await api.post('/bed-management/admit', admissionData);
+        return response.data;
+    },
+
+    dischargePatient: async (dischargeData) => {
+        const response = await api.post('/bed-management/discharge', dischargeData);
+        return response.data;
+    }
+};
+
+// ==================== THEATRE API ====================
+
+export const theatreAPI = {
+    getRooms: async () => {
+        const response = await api.get('/theatre/rooms');
+        return response.data;
+    },
+
+    addRoom: async (roomData) => {
+        const response = await api.post('/theatre/rooms', roomData);
+        return response.data;
+    },
+
+    getSurgeries: async () => {
+        const response = await api.get('/theatre/surgeries');
+        return response.data;
+    },
+
+    scheduleSurgery: async (surgeryData) => {
+        const response = await api.post('/theatre/surgeries', surgeryData);
+        return response.data;
+    },
+
+    updateSurgeryStatus: async (id, statusData) => {
+        const response = await api.put(`/theatre/surgeries/${id}/status`, statusData);
+        return response.data;
+    }
+};
+
+// ==================== EMR API ====================
+
+export const emrAPI = {
+    getRecords: async (patientId) => {
+        const response = await api.get('/emr/records', {
+            params: patientId ? { patientId } : {}
+        });
+        return response.data;
+    },
+
+    getRecordsByPatient: async (patientId) => {
+        const response = await api.get(`/emr/records/${patientId}`);
+        return response.data;
+    },
+
+    createRecord: async (recordData) => {
+        const response = await api.post('/emr/records', recordData);
+        return response.data;
+    },
+
+    updateRecord: async (id, recordData) => {
+        const response = await api.put(`/emr/records/${id}`, recordData);
+        return response.data;
+    },
+
+    getNotes: async (patientId) => {
+        const response = await api.get('/emr/notes', {
+            params: patientId ? { patientId } : {}
+        });
+        return response.data;
+    },
+
+    createNote: async (noteData) => {
+        const response = await api.post('/emr/notes', noteData);
+        return response.data;
+    }
+};
+
+// ==================== MATERNITY API ====================
+
+export const maternityAPI = {
+    getPatients: async () => {
+        const response = await api.get('/maternity/patients');
+        return response.data;
+    },
+
+    registerPatient: async (patientData) => {
+        const response = await api.post('/maternity/patients', patientData);
+        return response.data;
+    },
+
+    recordANCVisit: async (visitData) => {
+        const response = await api.post('/maternity/anc', visitData);
+        return response.data;
+    },
+
+    getDeliveries: async () => {
+        const response = await api.get('/maternity/deliveries');
+        return response.data;
+    },
+
+    recordDelivery: async (deliveryData) => {
+        const response = await api.post('/maternity/deliveries', deliveryData);
+        return response.data;
+    },
+
+    recordPNCVisit: async (visitData) => {
+        const response = await api.post('/maternity/pnc', visitData);
+        return response.data;
+    }
+};
+
+// ==================== TRIAGE API ====================
+
+export const triageAPI = {
+    getRecords: async (params) => {
+        const response = await api.get('/triage', { params });
+        return response.data;
+    },
+
+    createRecord: async (recordData) => {
+        const response = await api.post('/triage', recordData);
+        return response.data;
+    },
+
+    getRecordById: async (id) => {
+        const response = await api.get(`/triage/${id}`);
+        return response.data;
+    }
+};
+
+// ==================== LABORATORY API ====================
+
+export const labAPI = {
+    getTests: async (params) => {
+        const response = await api.get('/lab', { params });
+        return response.data;
+    },
+
+    orderTest: async (testData) => {
+        const response = await api.post('/lab', testData);
+        return response.data;
+    },
+
+    updateResults: async (id, resultData) => {
+        const response = await api.put(`/lab/${id}/results`, resultData);
+        return response.data;
+    },
+
+    getTestById: async (id) => {
+        const response = await api.get(`/lab/${id}`);
+        return response.data;
+    },
+
+    validateResults: async (id, notes) => {
+        const response = await api.put(`/lab/${id}/validate`, { notes });
+        return response.data;
+    },
+
+    logPrint: async (id) => {
+        const response = await api.post(`/lab/${id}/log-print`);
+        return response.data;
+    },
+
+    getPendingTests: async () => {
+        const response = await api.get('/lab/pending');
+        return response.data;
+    },
+
+    getDoctorOrders: async (doctorName) => {
+        const response = await api.get('/lab/my-orders', { params: { doctorName } });
+        return response.data;
+    },
+
+    notifyDoctor: async (id, message) => {
+        const response = await api.post(`/lab/${id}/notify-doctor`, { message });
+        return response.data;
+    }
+};
+
+// ==================== LAB INVENTORY API ====================
+
+export const labInventoryAPI = {
+    getAll: async (params) => {
+        const response = await api.get('/lab-inventory', { params });
+        return response.data;
+    },
+
+    add: async (itemData) => {
+        const response = await api.post('/lab-inventory', itemData);
+        return response.data;
+    },
+
+    update: async (id, itemData) => {
+        const response = await api.put(`/lab-inventory/${id}`, itemData);
+        return response.data;
+    },
+
+    delete: async (id) => {
+        const response = await api.delete(`/lab-inventory/${id}`);
+        return response.data;
+    },
+
+    recordTransaction: async (transactionData) => {
+        const response = await api.post('/lab-inventory/transaction', transactionData);
+        return response.data;
+    },
+
+    getTransactions: async (id) => {
+        const response = await api.get(`/lab-inventory/${id}/transactions`);
+        return response.data;
+    },
+
+    getLowStock: async () => {
+        const response = await api.get('/lab-inventory/alerts/low-stock');
+        return response.data;
+    }
+};
+
 
 // ==================== BLOOD BANK API ====================
 
