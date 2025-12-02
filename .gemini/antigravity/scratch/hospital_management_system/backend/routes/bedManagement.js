@@ -1,163 +1,390 @@
 const express = require('express');
-const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
-const { authMiddleware, attachHospitalId } = require('../middleware/auth');
+const { authenticateToken, attachHospitalId } = require('../middleware/auth');
 
+const router = express.Router();
 const prisma = new PrismaClient();
 
-// Middleware to ensure authentication
-router.use(authMiddleware); router.use(attachHospitalId);
+// Apply authentication and hospital ID middleware to all routes
+router.use(authenticateToken);
+router.use(attachHospitalId);
 
 // ==================== WARDS ====================
 
-// Get all wards
+// GET /api/bed-management/wards - List all wards
 router.get('/wards', async (req, res) => {
     try {
+        const { hospitalId } = req;
+        const { type, status } = req.query;
+
+        const where = { hospitalId };
+        if (type) where.type = type;
+        if (status) where.status = status;
+
         const wards = await prisma.ward.findMany({
-            where: { hospitalId: req.user.hospitalId },
-            include: { beds: true }
+            where,
+            include: {
+                beds: {
+                    select: {
+                        id: true,
+                        status: true
+                    }
+                }
+            },
+            orderBy: { name: 'asc' }
         });
-        res.json(wards);
+
+        // Calculate occupancy stats
+        const wardsWithStats = wards.map(ward => {
+            const totalBeds = ward.beds.length;
+            const occupiedBeds = ward.beds.filter(b => b.status === 'Occupied').length;
+            const availableBeds = ward.beds.filter(b => b.status === 'Available').length;
+
+            return {
+                ...ward,
+                stats: {
+                    totalBeds,
+                    occupiedBeds,
+                    availableBeds,
+                    occupancyRate: totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0
+                }
+            };
+        });
+
+        res.json({ wards: wardsWithStats });
     } catch (error) {
-        res.status(500).json({ error: 'Error fetching wards' });
+        console.error('Get wards error:', error);
+        res.status(500).json({ error: 'Failed to fetch wards' });
     }
 });
 
-// Create new ward
+// POST /api/bed-management/wards - Create new ward
 router.post('/wards', async (req, res) => {
     try {
-        const { name, type, floor, totalBeds } = req.body;
+        const { hospitalId } = req;
+        const { name, type, gender, capacity, description } = req.body;
+
+        if (!name || !type || !capacity) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
 
         const ward = await prisma.ward.create({
             data: {
+                hospitalId,
                 name,
-                wardId: `WARD-${Date.now()}`, // Simple ID generation
                 type,
-                floor,
-                totalBeds: parseInt(totalBeds),
-                hospitalId: req.user.hospitalId
+                gender,
+                capacity: parseInt(capacity),
+                description,
+                status: 'Active'
             }
         });
 
-        res.status(201).json(ward);
+        res.status(201).json({ ward, message: 'Ward created successfully' });
     } catch (error) {
-        res.status(500).json({ error: 'Error creating ward' });
+        console.error('Create ward error:', error);
+        res.status(500).json({ error: 'Failed to create ward' });
     }
 });
 
 // ==================== BEDS ====================
 
-// Get all beds
+// GET /api/bed-management/beds - List beds
 router.get('/beds', async (req, res) => {
     try {
+        const { hospitalId } = req;
+        const { wardId, status, type } = req.query;
+
+        const where = { hospitalId };
+        if (wardId) where.wardId = wardId;
+        if (status) where.status = status;
+        if (type) where.type = type;
+
         const beds = await prisma.bed.findMany({
-            where: { hospitalId: req.user.hospitalId },
-            include: { ward: true }
+            where,
+            include: {
+                ward: {
+                    select: {
+                        name: true,
+                        type: true,
+                        gender: true
+                    }
+                },
+                admissions: {
+                    where: { status: 'Admitted' },
+                    include: {
+                        patient: {
+                            select: {
+                                name: true,
+                                patientId: true,
+                                gender: true,
+                                dateOfBirth: true
+                            }
+                        }
+                    },
+                    take: 1
+                }
+            },
+            orderBy: [
+                { ward: { name: 'asc' } },
+                { number: 'asc' }
+            ]
         });
-        res.json(beds);
+
+        // Flatten structure for easier frontend consumption
+        const formattedBeds = beds.map(bed => ({
+            ...bed,
+            wardName: bed.ward.name,
+            wardType: bed.ward.type,
+            currentPatient: bed.admissions[0]?.patient || null,
+            admissionId: bed.admissions[0]?.id || null
+        }));
+
+        res.json({ beds: formattedBeds });
     } catch (error) {
-        res.status(500).json({ error: 'Error fetching beds' });
+        console.error('Get beds error:', error);
+        res.status(500).json({ error: 'Failed to fetch beds' });
     }
 });
 
-// Add new bed
+// POST /api/bed-management/beds - Add new bed
 router.post('/beds', async (req, res) => {
     try {
-        const { wardId, bedNumber } = req.body;
+        const { hospitalId } = req;
+        const { wardId, number, type, price, features } = req.body;
+
+        if (!wardId || !number || !type) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        // Check if bed number already exists in ward
+        const existingBed = await prisma.bed.findFirst({
+            where: { hospitalId, wardId, number }
+        });
+
+        if (existingBed) {
+            return res.status(400).json({ error: 'Bed number already exists in this ward' });
+        }
 
         const bed = await prisma.bed.create({
             data: {
+                hospitalId,
                 wardId,
-                bedNumber,
-                status: 'Available',
-                hospitalId: req.user.hospitalId
+                number,
+                type,
+                price: parseFloat(price || 0),
+                features: features || [],
+                status: 'Available'
+            },
+            include: {
+                ward: true
             }
         });
 
-        res.status(201).json(bed);
+        res.status(201).json({ bed, message: 'Bed added successfully' });
     } catch (error) {
-        res.status(500).json({ error: 'Error adding bed' });
+        console.error('Create bed error:', error);
+        res.status(500).json({ error: 'Failed to add bed' });
+    }
+});
+
+// PATCH /api/bed-management/beds/:id - Update bed status
+router.patch('/beds/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status, notes } = req.body;
+        const { hospitalId } = req;
+
+        const bed = await prisma.bed.findFirst({
+            where: { id, hospitalId }
+        });
+
+        if (!bed) {
+            return res.status(404).json({ error: 'Bed not found' });
+        }
+
+        // Prevent changing status if occupied (must discharge first)
+        if (bed.status === 'Occupied' && status !== 'Occupied') {
+            return res.status(400).json({ error: 'Cannot change status of occupied bed. Discharge patient first.' });
+        }
+
+        const updatedBed = await prisma.bed.update({
+            where: { id },
+            data: { status }
+        });
+
+        res.json({ bed: updatedBed, message: 'Bed status updated' });
+    } catch (error) {
+        console.error('Update bed status error:', error);
+        res.status(500).json({ error: 'Failed to update bed status' });
     }
 });
 
 // ==================== ADMISSIONS ====================
 
-// Admit patient
+// POST /api/bed-management/admit - Admit patient
 router.post('/admit', async (req, res) => {
     try {
-        const { patientId, bedId, diagnosis, doctorId } = req.body;
+        const { hospitalId, userId } = req;
+        const { patientId, bedId, diagnosis, reason, notes } = req.body;
 
-        // Start transaction
-        const result = await prisma.$transaction(async (prisma) => {
-            // Create admission record
-            const admission = await prisma.admission.create({
+        if (!patientId || !bedId) {
+            return res.status(400).json({ error: 'Patient and Bed are required' });
+        }
+
+        // Check if bed is available
+        const bed = await prisma.bed.findFirst({
+            where: { id: bedId, hospitalId }
+        });
+
+        if (!bed) {
+            return res.status(404).json({ error: 'Bed not found' });
+        }
+
+        if (bed.status !== 'Available') {
+            return res.status(400).json({ error: `Bed is currently ${bed.status}` });
+        }
+
+        // Check if patient is already admitted
+        const activeAdmission = await prisma.admission.findFirst({
+            where: {
+                patientId,
+                hospitalId,
+                status: 'Admitted'
+            }
+        });
+
+        if (activeAdmission) {
+            return res.status(400).json({ error: 'Patient is already admitted' });
+        }
+
+        // Create admission and update bed status transaction
+        const [admission, updatedBed] = await prisma.$transaction([
+            prisma.admission.create({
                 data: {
+                    hospitalId,
                     patientId,
                     bedId,
                     diagnosis,
-                    doctorId,
+                    reason,
+                    notes,
+                    admittedBy: userId,
                     status: 'Admitted',
-                    hospitalId: req.user.hospitalId
+                    admissionDate: new Date()
+                },
+                include: {
+                    patient: true,
+                    bed: {
+                        include: { ward: true }
+                    }
                 }
-            });
-
-            // Update bed status
-            await prisma.bed.update({
+            }),
+            prisma.bed.update({
                 where: { id: bedId },
-                data: {
-                    status: 'Occupied',
-                    patientId: patientId
-                }
-            });
+                data: { status: 'Occupied' }
+            })
+        ]);
 
-            return admission;
+        res.status(201).json({
+            admission,
+            bed: updatedBed,
+            message: 'Patient admitted successfully'
         });
-
-        res.status(201).json(result);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error admitting patient' });
+        console.error('Admit patient error:', error);
+        res.status(500).json({ error: 'Failed to admit patient' });
     }
 });
 
-// Discharge patient
+// POST /api/bed-management/discharge - Discharge patient
 router.post('/discharge', async (req, res) => {
     try {
-        const { admissionId, dischargeNotes } = req.body;
+        const { hospitalId, userId } = req;
+        const { admissionId, notes, dischargeType = 'Regular' } = req.body;
 
-        const admission = await prisma.admission.findUnique({
-            where: { id: admissionId }
+        const admission = await prisma.admission.findFirst({
+            where: { id: admissionId, hospitalId },
+            include: { bed: true }
         });
 
-        if (!admission) return res.status(404).json({ error: 'Admission not found' });
+        if (!admission) {
+            return res.status(404).json({ error: 'Admission record not found' });
+        }
 
-        // Start transaction
-        const result = await prisma.$transaction(async (prisma) => {
-            // Update admission record
-            const updatedAdmission = await prisma.admission.update({
+        if (admission.status !== 'Admitted') {
+            return res.status(400).json({ error: 'Patient is already discharged' });
+        }
+
+        // Update admission and bed status
+        const [updatedAdmission, updatedBed] = await prisma.$transaction([
+            prisma.admission.update({
                 where: { id: admissionId },
                 data: {
                     status: 'Discharged',
-                    dischargeDate: new Date()
+                    dischargeDate: new Date(),
+                    dischargedBy: userId,
+                    notes: notes ? `${admission.notes || ''}\nDischarge Notes: ${notes}` : admission.notes
                 }
-            });
-
-            // Update bed status
-            await prisma.bed.update({
+            }),
+            prisma.bed.update({
                 where: { id: admission.bedId },
-                data: {
-                    status: 'Available',
-                    patientId: null,
-                    patientName: null
-                }
-            });
+                data: { status: 'Cleaning' } // Set to cleaning after discharge
+            })
+        ]);
 
-            return updatedAdmission;
+        res.json({
+            admission: updatedAdmission,
+            bed: updatedBed,
+            message: 'Patient discharged successfully'
+        });
+    } catch (error) {
+        console.error('Discharge patient error:', error);
+        res.status(500).json({ error: 'Failed to discharge patient' });
+    }
+});
+
+// GET /api/bed-management/admissions - List active admissions
+router.get('/admissions', async (req, res) => {
+    try {
+        const { hospitalId } = req;
+        const { status = 'Admitted', search } = req.query;
+
+        const where = {
+            hospitalId,
+            status
+        };
+
+        if (search) {
+            where.patient = {
+                name: { contains: search, mode: 'insensitive' }
+            };
+        }
+
+        const admissions = await prisma.admission.findMany({
+            where,
+            include: {
+                patient: {
+                    select: {
+                        id: true,
+                        name: true,
+                        patientId: true,
+                        gender: true,
+                        dateOfBirth: true
+                    }
+                },
+                bed: {
+                    include: {
+                        ward: true
+                    }
+                }
+            },
+            orderBy: { admissionDate: 'desc' }
         });
 
-        res.json(result);
+        res.json({ admissions });
     } catch (error) {
-        res.status(500).json({ error: 'Error discharging patient' });
+        console.error('Get admissions error:', error);
+        res.status(500).json({ error: 'Failed to fetch admissions' });
     }
 });
 

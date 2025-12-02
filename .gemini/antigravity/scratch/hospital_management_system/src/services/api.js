@@ -267,29 +267,7 @@ export const insuranceAPI = {
     }
 };
 
-// ==================== WALLET API ====================
 
-export const walletAPI = {
-    getAll: async () => {
-        const response = await api.get('/wallet');
-        return response.data;
-    },
-
-    create: async (walletData) => {
-        const response = await api.post('/wallet', walletData);
-        return response.data;
-    },
-
-    topUp: async (id, topUpData) => {
-        const response = await api.post(`/wallet/${id}/topup`, topUpData);
-        return response.data;
-    },
-
-    getTransactions: async (id) => {
-        const response = await api.get(`/wallet/${id}/transactions`);
-        return response.data;
-    }
-};
 
 // ==================== BED MANAGEMENT API ====================
 
@@ -754,6 +732,58 @@ export const walletAPI = {
     updateStatus: async (id, status) => {
         const response = await api.patch(`/wallet/${id}/status`, { status });
         return response.data;
+    }
+}
+
+// ==================== BED MANAGEMENT API ====================
+
+export const bedManagementAPI = {
+    // Get all wards
+    getWards: async (params) => {
+        const response = await api.get('/bed-management/wards', { params });
+        return response.data.wards || response.data;
+    },
+
+    // Create ward
+    createWard: async (wardData) => {
+        const response = await api.post('/bed-management/wards', wardData);
+        return response.data;
+    },
+
+    // Get beds
+    getBeds: async (params) => {
+        const response = await api.get('/bed-management/beds', { params });
+        return response.data.beds || response.data;
+    },
+
+    // Add bed
+    addBed: async (bedData) => {
+        const response = await api.post('/bed-management/beds', bedData);
+        return response.data;
+    },
+
+    // Update bed status
+    updateBedStatus: async (id, status) => {
+        const response = await api.patch(`/bed-management/beds/${id}`, { status });
+        return response.data;
+    },
+
+    // Admit patient
+    admitPatient: async (admissionData) => {
+        const response = await api.post('/bed-management/admit', admissionData);
+        return response.data;
+    },
+
+    // Discharge patient
+    dischargePatient: async (dischargeData) => {
+        const response = await api.post('/bed-management/discharge', dischargeData);
+        return response.data;
+    },
+
+    // Get active admissions
+    getAdmissions: async (params) => {
+        const response = await api.get('/bed-management/admissions', { params });
+        return response.data.admissions || response.data;
     }
 };
 

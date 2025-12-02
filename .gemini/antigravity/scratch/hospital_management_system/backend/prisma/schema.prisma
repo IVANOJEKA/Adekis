@@ -164,6 +164,7 @@ model Patient {
   labTests     LabTest[]
   maternityRecords MaternityPatient[]
   triageRecords TriageRecord[]
+  admissions   Admission[]
   wallet       Wallet?
   
   @@index([hospitalId])
@@ -406,47 +407,6 @@ model Case {
 
 // ==================== BED MANAGEMENT ====================
 
-model Ward {
-  id          String   @id @default(uuid())
-  hospitalId  String
-  wardId      String   @unique  // e.g., "WARD-A"
-  name        String
-  floor       String?
-  type        String   // General, ICU, Maternity, Pediatric
-  totalBeds   Int
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  hospital    Hospital @relation(fields: [hospitalId], references: [id])
-  beds        Bed[]
-  
-  @@index([hospitalId])
-}
-
-model Bed {
-  id          String   @id @default(uuid())
-  hospitalId  String
-  wardId      String
-  bedNumber   String
-  status      String   @default("available")  // available, occupied, maintenance
-  patientId   String?
-  patientName String?
-  admissionDate DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  hospital    Hospital @relation(fields: [hospitalId], references: [id])
-  ward        Ward @relation(fields: [wardId], references: [id])
-  admissions  Admission[]
-  
-  @@index([hospitalId])
-  @@index([wardId])
-  @@index([status])
-  @@unique([wardId, bedNumber])
-}
-
 // ==================== INVENTORY ====================
 
 model InventoryItem {
@@ -667,28 +627,6 @@ model LeaveRequest {
 }
 
 // ==================== BED MANAGEMENT (EXTENDED) ====================
-
-model Admission {
-  id          String   @id @default(uuid())
-  hospitalId  String
-  patientId   String
-  bedId       String
-  bed         Bed      @relation(fields: [bedId], references: [id])
-  admissionDate DateTime @default(now())
-  dischargeDate DateTime?
-  diagnosis   String
-  doctorId    String?
-  status      String   @default("Admitted") // Admitted, Discharged
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  hospital    Hospital @relation(fields: [hospitalId], references: [id])
-
-  @@index([hospitalId])
-  @@index([patientId])
-  @@index([bedId])
-}
 
 // ==================== THEATRE / SURGERY ====================
 
@@ -994,4 +932,73 @@ model TriageRecord {
   @@index([hospitalId])
   @@index([patientId])
   @@index([createdAt])
+}
+
+// ==================== BED MANAGEMENT ====================
+
+model Ward {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  name        String
+  type        String   // General, Private, ICU, Maternity, Pediatric
+  gender      String   // Male, Female, Mixed
+  capacity    Int
+  description String?
+  status      String   @default("Active") // Active, Maintenance, Closed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  beds        Bed[]
+
+  @@index([hospitalId])
+}
+
+model Bed {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  wardId      String
+  number      String
+  type        String   // Standard, Adjustable, ICU, Incubator
+  status      String   @default("Available") // Available, Occupied, Cleaning, Maintenance
+  price       Float    @default(0)
+  features    String[] // Oxygen, Monitor, etc.
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  ward        Ward     @relation(fields: [wardId], references: [id])
+  admissions  Admission[]
+
+  @@index([hospitalId])
+  @@index([wardId])
+}
+
+model Admission {
+  id          String   @id @default(uuid())
+  hospitalId  String
+  patientId   String
+  bedId       String
+  admissionDate DateTime @default(now())
+  dischargeDate DateTime?
+  diagnosis   String?
+  reason      String?  // Reason for admission
+  admittedBy  String   // Doctor/Nurse ID
+  dischargedBy String? // Doctor ID
+  status      String   @default("Admitted") // Admitted, Discharged, Transferred
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hospital    Hospital @relation(fields: [hospitalId], references: [id])
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  bed         Bed      @relation(fields: [bedId], references: [id])
+
+  @@index([hospitalId])
+  @@index([patientId])
+  @@index([bedId])
+  @@index([status])
 }
