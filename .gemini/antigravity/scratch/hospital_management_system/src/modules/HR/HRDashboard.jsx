@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Users, UserPlus, Briefcase, Clock, CalendarCheck, Award, DollarSign, Search, Filter, Calendar, TrendingUp, FileText, Target, CheckSquare, Star } from 'lucide-react';
-import { useData } from '../../../context/DataContext';
+import { useData } from '../../context/DataContext';
 import EnhancedAttendance from './components/EnhancedAttendance';
 import PayrollDashboard from './components/PayrollDashboard';
 import AddEmployeeModal from './components/AddEmployeeModal';
