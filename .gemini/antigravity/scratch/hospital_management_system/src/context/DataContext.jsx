@@ -3396,9 +3396,6 @@ export const DataProvider = ({ children }) => {
         fetchServices,
         servicesLoading,
 
-        // Prescriptions (API-BACKED)
-        prescriptions,
-        setPrescriptions,
         // Pharmacy Data
         suppliers, setSuppliers,
 
