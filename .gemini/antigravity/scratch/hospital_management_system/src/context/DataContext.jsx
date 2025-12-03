@@ -3250,7 +3250,6 @@ export const DataProvider = ({ children }) => {
         wards,
         beds,
         admissions,
-        admissions,
         patients,
         inventory,
         prescriptions,
@@ -3262,7 +3261,6 @@ export const DataProvider = ({ children }) => {
         carePlans,
         handoverReports,
         nursingTasks,
-        medicationLogs,
         medicationLogs,
         labOrders,
         labInventory,
@@ -3408,7 +3406,6 @@ export const DataProvider = ({ children }) => {
         auditLogs, setAuditLogs,
         loginHistory, setLoginHistory,
         securitySettings, setSecuritySettings,
-        loginHistory, setLoginHistory,
         backupHistory, setBackupHistory,
 
         // User Data
