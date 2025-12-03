@@ -89,9 +89,7 @@ const MaternityCare = () => {
                                         }y</p>
                                     </div>
                                 </div>
-                                <span className={`px-2 py-1 rounded text-xs font-bold ${mother.risk === 'High' ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'
-                                    }`}>
-                                    }`}>
+                                <span className={`px-2 py-1 rounded text-xs font-bold ${mother.risk === 'High' ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
                                     {mother.details?.risk || mother.risk} Risk
                                 </span>
                             </div>
