@@ -269,39 +269,7 @@ export const insuranceAPI = {
 
 
 
-// ==================== BED MANAGEMENT API ====================
 
-export const bedManagementAPI = {
-    getWards: async () => {
-        const response = await api.get('/bed-management/wards');
-        return response.data;
-    },
-
-    createWard: async (wardData) => {
-        const response = await api.post('/bed-management/wards', wardData);
-        return response.data;
-    },
-
-    getBeds: async () => {
-        const response = await api.get('/bed-management/beds');
-        return response.data;
-    },
-
-    addBed: async (bedData) => {
-        const response = await api.post('/bed-management/beds', bedData);
-        return response.data;
-    },
-
-    admitPatient: async (admissionData) => {
-        const response = await api.post('/bed-management/admit', admissionData);
-        return response.data;
-    },
-
-    dischargePatient: async (dischargeData) => {
-        const response = await api.post('/bed-management/discharge', dischargeData);
-        return response.data;
-    }
-};
 
 // ==================== THEATRE API ====================
 
@@ -737,7 +705,7 @@ export const walletAPI = {
 
 // ==================== BED MANAGEMENT API ====================
 
-export const bedManagementAPI = {
+export const bedMgmtAPI = {
     // Get all wards
     getWards: async (params) => {
         const response = await api.get('/bed-management/wards', { params });
