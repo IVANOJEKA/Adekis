@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Users, UserPlus, Briefcase, Clock, CalendarCheck, Award, DollarSign, Search, Filter, Calendar, TrendingUp, FileText, Target, CheckSquare, Star } from 'lucide-react';
-import { useData } from '../../context/DataContext';
+import { useData } from '../../../context/DataContext';
 import EnhancedAttendance from './components/EnhancedAttendance';
 import PayrollDashboard from './components/PayrollDashboard';
 import AddEmployeeModal from './components/AddEmployeeModal';
@@ -368,52 +368,6 @@ const HRDashboard = () => {
                                                 >
                                                     View Profile
                                                 </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            <h3 className="font-bold text-slate-800">Leave Requests</h3>
-                            <button className="btn btn-primary btn-sm gap-2">
-                                <CalendarCheck size={16} />
-                                New Request
-                            </button>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-100">
-                                    <tr>
-                                        <th className="px-6 py-3">Employee</th>
-                                        <th className="px-6 py-3">Type</th>
-                                        <th className="px-6 py-3">Start Date</th>
-                                        <th className="px-6 py-3">End Date</th>
-                                        <th className="px-6 py-3">Days</th>
-                                        <th className="px-6 py-3">Status</th>
-                                        <th className="px-6 py-3">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {leaveRequests?.map(leave => (
-                                        <tr key={leave.id} className="hover:bg-slate-50">
-                                            <td className="px-6 py-4 font-medium text-slate-800">{leave.employeeName}</td>
-                                            <td className="px-6 py-4 text-slate-600">{leave.leaveType}</td>
-                                            <td className="px-6 py-4 text-slate-600">{leave.startDate}</td>
-                                            <td className="px-6 py-4 text-slate-600">{leave.endDate}</td>
-                                            <td className="px-6 py-4 text-slate-600">{leave.days}</td>
-                                            <td className="px-6 py-4">
-                                                <span className={`px-2 py-1 text-xs font-bold rounded ${leave.status === 'Approved' ? 'bg-green-100 text-green-700' :
-                                                    leave.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                                                        'bg-red-100 text-red-700'
-                                                    }`}>
-                                                    {leave.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                {leave.status === 'Pending' && (
-                                                    <button className="text-primary font-medium text-xs hover:underline">
-                                                        Review
-                                                    </button>
-                                                )}
                                             </td>
                                         </tr>
                                     ))}
