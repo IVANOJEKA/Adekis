@@ -1,4 +1,13 @@
 services:
+  # PostgreSQL Database
+  - type: pserv
+    name: hms-database
+    plan: free
+    databaseName: hmsdb
+    databaseUser: hmsuser
+    region: oregon
+
+  # Backend API
   - type: web
     name: hms-backend
     env: node
@@ -6,13 +15,28 @@ services:
     plan: free
     buildCommand: cd backend && npm install && npx prisma generate
     startCommand: cd backend && npm start
+    healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: hms-database
+          property: connectionString
       - key: JWT_SECRET
-        sync: false
+        generateValue: true
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 5000
-    healthCheckPath: /api/health
+        value: 10000
+      - key: CORS_ORIGIN
+        sync: false
+
+  # Frontend Static Site
+  - type: web
+    name: hms-frontend
+    env: static
+    region: oregon
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_URL
+        sync: false
