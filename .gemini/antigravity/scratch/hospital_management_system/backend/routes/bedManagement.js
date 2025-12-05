@@ -1,12 +1,12 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
-const { authenticateToken, attachHospitalId } = require('../middleware/auth');
+const { authMiddleware, attachHospitalId } = require('../middleware/auth');
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
 // Apply authentication and hospital ID middleware to all routes
-router.use(authenticateToken);
+router.use(authMiddleware);
 router.use(attachHospitalId);
 
 // ==================== WARDS ====================
