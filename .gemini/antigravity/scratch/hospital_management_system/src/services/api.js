@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// API Base URL - change this to your backend URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// API Base URL - production backend on Render
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://hms-backend-13vb.onrender.com/api';
 
 // Create axios instance with default config
 const api = axios.create({
