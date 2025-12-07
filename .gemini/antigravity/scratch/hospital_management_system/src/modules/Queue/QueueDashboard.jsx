@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
 import {
     Users, Clock, AlertCircle, UserPlus, Play, CheckCircle, XCircle, ArrowRight,
-    Monitor, Filter, TrendingUp, Phone, Search, Calendar, Activity, Bell, ClipboardList, ChevronDown
+    Monitor, Filter, TrendingUp, Phone, Search, Calendar, Activity, Bell, ClipboardList, ChevronDown, Volume2
 } from 'lucide-react';
+import voiceAnnouncer from '../../utils/voiceAnnouncement';
 
 import QueueDisplay from './QueueDisplay';
 
@@ -16,6 +17,11 @@ const QueueDashboard = () => {
     const [selectedPatient, setSelectedPatient] = useState(null);
     const [selectedFilter, setSelectedFilter] = useState('Waiting');
     const [showDisplayMode, setShowDisplayMode] = useState(false);
+    const [callingToken, setCallingToken] = useState(null);
+    const [lastCalledTokens, setLastCalledTokens] = useState([]);
+
+    const [voiceTestResult, setVoiceTestResult] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const departments = ['All', 'Doctor', 'Pharmacy', 'Laboratory', 'Radiology', 'Billing', 'Triage', 'Maternity'];
 
@@ -99,36 +105,129 @@ const QueueDashboard = () => {
     // Check-in new patient
     const handleCheckIn = async (e) => {
         e.preventDefault();
-        const formData = new FormData(e.target);
+        setIsSubmitting(true);
 
-        // Create queue entry via API
-        const newEntry = {
-            queueNumber: generateQueueNumber(formData.get('department')),
-            patientId: formData.get('patientId'),
-            patientName: formData.get('patientName'),
-            department: formData.get('department'),
-            service: formData.get('service'),
-            priority: formData.get('priority'),
-            status: 'Waiting',
-            notes: formData.get('notes') || ''
-        };
+        try {
+            const formData = new FormData(e.target);
 
-        await addQueueEntry(newEntry);
-
-        // Automatically add consultation bill
-        if (formData.get('department') === 'Doctor') {
-            addBill({
+            // Create queue entry via API
+            const newEntry = {
+                queueNumber: generateQueueNumber(formData.get('department')),
                 patientId: formData.get('patientId'),
-                amount: 50000, // Standard Consultation Fee
-                type: 'Consultation',
-                description: `Consultation Fee - ${formData.get('service')}`,
-                status: 'Pending'
+                patientName: formData.get('patientName'),
+                department: formData.get('department'),
+                service: formData.get('service'),
+                priority: formData.get('priority'),
+                status: 'Waiting',
+                notes: formData.get('notes') || ''
+            };
+
+            await addQueueEntry(newEntry);
+
+            // Automatically add consultation bill
+            if (formData.get('department') === 'Doctor') {
+                addBill({
+                    patientId: formData.get('patientId'),
+                    amount: 50000, // Standard Consultation Fee
+                    type: 'Consultation',
+                    description: `Consultation Fee - ${formData.get('service')}`,
+                    status: 'Pending'
+                });
+            }
+
+            setShowCheckInModal(false);
+            setSelectedPatient(null);
+            setSearchTerm('');
+        } catch (error) {
+            console.error('Check-in failed:', error);
+            alert('Failed to add patient to queue. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    // Test voice functionality
+    const handleTestVoice = async () => {
+        setVoiceTestResult('testing');
+        try {
+            if (!voiceAnnouncer.isSupported()) {
+                setVoiceTestResult('failed');
+                alert('❌ Voice not supported in this browser.\n\nPlease use Chrome, Edge, or Safari.');
+                return;
+            }
+
+            await voiceAnnouncer.announceToken('T-001', 'Test', 'Test Patient');
+            setVoiceTestResult('success');
+            alert('✅ Voice working! You should have heard:\n"Token number T dash zero zero one, Test Patient, please proceed to Test counter"');
+        } catch (error) {
+            setVoiceTestResult('failed');
+            console.error('Voice test failed:', error);
+            alert(`❌ Voice test failed: ${error.message}\n\nTry using Chrome or Edge browser.`);
+        }
+    };
+
+    const handleCallPatient = async (entry) => {
+        setCallingToken(entry.queueNumber);
+
+        try {
+            if (!voiceAnnouncer.isSupported()) {
+                alert('❌ Voice not supported in this browser.\n\nPlease use Chrome, Edge, or Safari.');
+                setCallingToken(null);
+                return;
+            }
+
+            // Play voice announcement
+            await voiceAnnouncer.announceToken(
+                entry.queueNumber,
+                entry.department,
+                entry.patientName
+            );
+
+            // Update status to Called
+            await updateQueueEntry(entry.id, {
+                status: 'Called',
+                calledAt: new Date().toISOString()
+            });
+
+            // Add to called history
+            setLastCalledTokens(prev => [
+                { ...entry, calledAt: new Date().toISOString() },
+                ...prev.slice(0, 4)
+            ]);
+
+            alert(`✅ Called ${entry.patientName} (${entry.queueNumber})`);
+        } catch (error) {
+            console.error('Voice announcement failed:', error);
+            alert(`❌ Voice failed: ${error.message}\n\nTry the Test Voice button first.`);
+        } finally {
+            setCallingToken(null);
+        }
+    };
+
+    // Start serving a patient
+    const handleStartService = async (entryId) => {
+        await updateQueueEntry(entryId, {
+            status: 'InService',
+            serviceStartedAt: new Date().toISOString()
+        });
+    };
+
+    // Complete service for a patient
+    const handleCompleteService = async (entryId) => {
+        await updateQueueEntry(entryId, {
+            status: 'Completed',
+            completedAt: new Date().toISOString()
+        });
+    };
+
+    // Cancel a queue entry
+    const handleCancel = async (entryId) => {
+        if (confirm('Are you sure you want to cancel this queue entry?')) {
+            await updateQueueEntry(entryId, {
+                status: 'Cancelled',
+                cancelledAt: new Date().toISOString()
             });
         }
-
-        setShowCheckInModal(false);
-        setSelectedPatient(null);
-        setSearchTerm('');
     };
 
     // ... (rest of the component)
@@ -137,9 +236,25 @@ const QueueDashboard = () => {
         <div className="space-y-6 animate-fade-in pb-10">
             {/* Header Banner */}
             <div className="bg-emerald-500 rounded-2xl p-8 text-white shadow-lg relative overflow-hidden">
-                <div className="relative z-10">
-                    <h1 className="text-3xl font-bold mb-2">Queue Management</h1>
-                    <p className="text-emerald-50 opacity-90">Patient queue and waiting list system</p>
+                <div className="relative z-10 flex justify-between items-center">
+                    <div>
+                        <h1 className="text-3xl font-bold mb-2">Queue Management</h1>
+                        <p className="text-emerald-50 opacity-90">Patient queue and waiting list system</p>
+                    </div>
+                    <button
+                        onClick={handleTestVoice}
+                        className={`px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all ${voiceTestResult === 'testing' ? 'bg-yellow-500 text-white animate-pulse' :
+                            voiceTestResult === 'success' ? 'bg-green-600 text-white' :
+                                voiceTestResult === 'failed' ? 'bg-red-600 text-white' :
+                                    'bg-white text-emerald-600 hover:bg-emerald-50'
+                            }`}
+                    >
+                        <Volume2 size={20} />
+                        {voiceTestResult === 'testing' ? 'Testing...' :
+                            voiceTestResult === 'success' ? 'Voice OK ✓' :
+                                voiceTestResult === 'failed' ? 'Voice Failed ✗' :
+                                    'Test Voice'}
+                    </button>
                 </div>
                 <div className="absolute right-8 top-1/2 -translate-y-1/2 opacity-20">
                     <ClipboardList size={120} />
@@ -178,6 +293,51 @@ const QueueDashboard = () => {
                     <UserPlus size={24} className="group-hover:scale-110 transition-transform" />
                     + Add to Queue
                 </button>
+            </div>
+
+            {/* Quick Call by Department */}
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 shadow-sm border border-blue-100">
+                <h3 className="font-bold text-slate-800 text-lg mb-4 flex items-center gap-2">
+                    <Volume2 className="text-blue-600" size={20} />
+                    Quick Call Next Patient
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                    {departments.filter(d => d !== 'All').map(dept => {
+                        const nextPatient = filteredQueue
+                            .filter(e => e.department === dept && e.status === 'Waiting')
+                            .sort((a, b) => {
+                                const priorityOrder = { 'Emergency': 0, 'Urgent': 1, 'Normal': 2 };
+                                if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
+                                    return priorityOrder[a.priority] - priorityOrder[b.priority];
+                                }
+                                return new Date(a.checkInTime) - new Date(b.checkInTime);
+                            })[0];
+
+                        return (
+                            <button
+                                key={dept}
+                                onClick={() => nextPatient && handleCallPatient(nextPatient)}
+                                disabled={!nextPatient || callingToken}
+                                className={`p-4 rounded-xl font-bold text-sm transition-all ${nextPatient && !callingToken
+                                    ? 'bg-white border-2 border-blue-500 text-blue-700 hover:bg-blue-50 hover:shadow-md'
+                                    : 'bg-slate-100 border-2 border-slate-200 text-slate-400 cursor-not-allowed'
+                                    }`}
+                            >
+                                <div className="flex flex-col items-center gap-2">
+                                    <Volume2 size={20} />
+                                    <span className="text-xs">{dept}</span>
+                                    {nextPatient && (
+                                        <span className="text-lg font-black text-blue-600">{nextPatient.queueNumber}</span>
+                                    )}
+                                    {!nextPatient && (
+                                        <span className="text-xs text-slate-400">No queue</span>
+                                    )}
+                                </div>
+                            </button>
+                        );
+                    })}
+                </div>
+                <p className="text-xs text-slate-500 mt-3 text-center">Click department button to call the next waiting patient</p>
             </div>
 
             {/* Department Tabs */}
@@ -223,7 +383,9 @@ const QueueDashboard = () => {
                                         <td className="px-6 py-4">
                                             <div>
                                                 <div className="font-bold text-slate-800">{entry.patientName}</div>
-                                                <div className="text-xs text-slate-500">{entry.patientId}</div>
+                                                <div className="text-xs text-slate-500 font-mono">
+                                                    {entry.patient?.patientId || entry.patientId}
+                                                </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-slate-600">{entry.department}</td>
@@ -246,6 +408,19 @@ const QueueDashboard = () => {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
+                                                {entry.status === 'Waiting' && (
+                                                    <button
+                                                        onClick={() => handleCallPatient(entry)}
+                                                        disabled={callingToken === entry.queueNumber}
+                                                        className={`p-2 rounded-lg transition-colors ${callingToken === entry.queueNumber
+                                                            ? 'bg-blue-100 text-blue-600 animate-pulse'
+                                                            : 'text-blue-600 hover:bg-blue-50'
+                                                            }`}
+                                                        title="Call Patient"
+                                                    >
+                                                        <Volume2 size={18} />
+                                                    </button>
+                                                )}
                                                 {(entry.status === 'Waiting' || entry.status === 'Called') && (
                                                     <button
                                                         onClick={() => handleStartService(entry.id)}
@@ -328,14 +503,20 @@ const QueueDashboard = () => {
                         <form onSubmit={handleCheckIn} className="p-6 space-y-5">
                             <div>
                                 <label className="block text-sm font-bold text-slate-700 mb-2">Patient ID</label>
+                                {/* Hidden input for backend foreign key (UUID) */}
                                 <input
+                                    type="hidden"
                                     name="patientId"
-                                    required
+                                    value={selectedPatient?.id || ''}
+                                />
+                                {/* Visible input for display (Readable ID) */}
+                                <input
+                                    name="patientIdDisplay"
                                     type="text"
-                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all bg-slate-50"
-                                    placeholder="Enter patient ID"
-                                    defaultValue={selectedPatient?.id || ''}
-                                    readOnly={!!selectedPatient}
+                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all bg-slate-50 font-mono font-bold text-slate-600"
+                                    placeholder="Patient ID"
+                                    defaultValue={selectedPatient?.patientId || selectedPatient?.id || ''}
+                                    readOnly={true}
                                 />
                             </div>
 
@@ -400,10 +581,20 @@ const QueueDashboard = () => {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 px-4 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-bold shadow-lg shadow-emerald-200 transition-colors flex items-center justify-center gap-2"
+                                    disabled={isSubmitting}
+                                    className={`flex-1 px-4 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-bold shadow-lg shadow-emerald-200 transition-colors flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-wait' : ''}`}
                                 >
-                                    <UserPlus size={20} />
-                                    Add to Queue
+                                    {isSubmitting ? (
+                                        <>
+                                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            Adding...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <UserPlus size={20} />
+                                            Add to Queue
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </form>

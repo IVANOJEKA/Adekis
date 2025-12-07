@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Wallet, CreditCard, Plus, TrendingUp, Users, DollarSign, History, Gift, Crown, Shield, Heart, Copy, Settings, Eye, EyeOff, ArrowUpRight, ArrowDownLeft, Star, Check, X, Sparkles, QrCode } from 'lucide-react';
+import { Wallet, CreditCard, Plus, TrendingUp, Users, DollarSign, History, Gift, Crown, Shield, Heart, Copy, Settings, Eye, EyeOff, ArrowUpRight, ArrowDownLeft, Star, Check, X, Sparkles, Wifi } from 'lucide-react';
 import { useData } from '../../context/DataContext';
-import QRCodeSVG from '../../components/QRCode';
+import { useBranding } from '../../context/BrandingContext';
 
 const WalletDashboard = () => {
     const { walletRecords, createWallet, topUpWallet } = useData();
+    const { branding } = useBranding();
     const [activeTab, setActiveTab] = useState('my-wallets');
     const [showBalance, setShowBalance] = useState({});
     const [showSubscribeModal, setShowSubscribeModal] = useState(false);
@@ -280,39 +281,65 @@ const WalletDashboard = () => {
                                         const pkg = getPackageDetails(wallet.packageType);
                                         return (
                                             <div key={wallet.id} className="relative group">
-                                                {/* Card */}
-                                                <div className={`bg-gradient-to-br ${pkg.gradient} rounded-2xl p-6 text-white shadow-2xl h-56 flex flex-col justify-between relative overflow-hidden transition-transform hover:scale-105 hover:shadow-3xl`}>
-                                                    {/* Shimmer Effect */}
-                                                    <div className={`absolute inset-0 ${pkg.shimmer} opacity-0 group-hover:opacity-100 transition-opacity duration-1000 animate-shimmer`}></div>
+                                                <div
+                                                    className={`relative h-64 rounded-2xl p-6 text-white shadow-xl transition-all duration-500 transform group-hover:scale-[1.02] overflow-hidden ${['platinum', 'premium'].includes(pkg.id) ? 'border border-blue-200/20' : ''
+                                                        }`}
+                                                    style={{
+                                                        background: ['platinum', 'premium'].includes(pkg.id)
+                                                            ? `linear-gradient(135deg, #020617, ${branding.primaryColor})` // Platinum Blue
+                                                            : `linear-gradient(135deg, ${branding.primaryColor}, #60a5fa)`, // Blue-White feel
+                                                        backgroundSize: '200% 200%',
+                                                        animation: 'gradient-xy 15s ease infinite',
+                                                        boxShadow: ['platinum', 'premium'].includes(pkg.id)
+                                                            ? `0 25px 50px -12px ${branding.primaryColor}90` // Deep Glow
+                                                            : `0 10px 40px -10px ${branding.primaryColor}40`
+                                                    }}
+                                                >
+                                                    {/* Platinum Sheen */}
+                                                    {['platinum', 'premium'].includes(pkg.id) && (
+                                                        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.2) 1px, transparent 1px)', backgroundSize: '12px 12px' }}></div>
+                                                    )}
 
-                                                    {/* Background Pattern */}
-                                                    <div className="absolute inset-0 opacity-20">
-                                                        <div className="absolute top-0 right-0 w-40 h-40 bg-white rounded-full -translate-y-20 translate-x-20"></div>
-                                                        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white rounded-full translate-y-24 -translate-x-24"></div>
-                                                        <div className="absolute top-1/2 right-1/4 w-24 h-24 bg-white rounded-full opacity-50"></div>
-                                                    </div>
+                                                    {/* Premium Gold Blur */}
+                                                    {['platinum', 'premium'].includes(pkg.id) && (
+                                                        <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                                                    )}
+                                                    {/* Glass Effect Overlay */}
+                                                    <div className="absolute inset-0 bg-white/10 backdrop-blur-[1px]"></div>
 
-                                                    {/* Sparkle Icon */}
-                                                    <div className="absolute top-4 right-4 opacity-30">
-                                                        <Sparkles size={20} />
+                                                    {/* Decorative Circles */}
+                                                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+                                                    <div className="absolute bottom-10 -left-10 w-40 h-40 bg-black/10 rounded-full blur-3xl"></div>
+
+                                                    {/* Logo Watermark */}
+                                                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-[0.07] pointer-events-none select-none">
+                                                        {branding.logo ? (
+                                                            <img src={branding.logo} alt="" className="w-48 h-48 object-contain grayscale brightness-200" />
+                                                        ) : (
+                                                            <div className="text-9xl font-black tracking-tighter">
+                                                                {branding.name.charAt(0)}
+                                                            </div>
+                                                        )}
                                                     </div>
 
                                                     {/* Card Header */}
                                                     <div className="relative z-10">
                                                         <div className="flex justify-between items-start mb-3">
                                                             <div>
-                                                                <p className="text-xs font-medium opacity-90">Kampala General Hospital</p>
-                                                                <div className={`inline-block mt-1 px-2 py-0.5 bg-gradient-to-r ${pkg.accentGradient} rounded-full`}>
-                                                                    <p className="text-[10px] font-bold uppercase tracking-wide">{pkg.name}</p>
+                                                                <p className="text-xs font-bold opacity-90 tracking-wider uppercase">{branding.name}</p>
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    <div className="px-2 py-0.5 bg-white/20 backdrop-blur-md rounded-full border border-white/20">
+                                                                        <p className="text-[10px] font-bold uppercase tracking-wide text-white">{pkg.name}</p>
+                                                                    </div>
                                                                 </div>
                                                             </div>
-                                                            <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
-                                                                <pkg.icon size={20} />
+                                                            <div className="bg-white/20 backdrop-blur-md p-2 rounded-lg border border-white/20">
+                                                                <pkg.icon size={20} className="text-white" />
                                                             </div>
                                                         </div>
-                                                        <div className="mb-1">
+                                                        <div className="mb-1 mt-6">
                                                             <p className="text-[10px] uppercase tracking-wide opacity-80">Digital Balance</p>
-                                                            <p className="text-2xl font-bold tracking-tight">
+                                                            <p className="text-2xl font-bold tracking-tight drop-shadow-sm">
                                                                 {showBalance[wallet.id]
                                                                     ? `UGX ${wallet.balance.toLocaleString()}`
                                                                     : '•••• ••••'}
@@ -339,27 +366,23 @@ const WalletDashboard = () => {
                                                     </div>
 
 
-                                                    {/* Chip Icon */}
-                                                    <div className="absolute bottom-20 left-6 w-10 h-8 bg-gradient-to-br from-yellow-200 to-yellow-400 rounded opacity-90"></div>
-
-                                                    {/* QR Code for Payment - Compact Size */}
-                                                    <div className="absolute bottom-2 right-2 z-30">
-                                                        <div className="bg-white p-2 rounded-xl shadow-2xl border-2 border-emerald-500">
-                                                            <div className="text-center mb-1">
-                                                                <p className="text-[7px] font-extrabold text-emerald-700 uppercase tracking-wider">SCAN</p>
+                                                    {/* Smart Chip */}
+                                                    <div className="absolute top-24 left-8">
+                                                        <div className="w-12 h-9 bg-gradient-to-br from-yellow-200 via-yellow-100 to-yellow-400 rounded-md shadow-sm border border-yellow-500/30 relative overflow-hidden flex items-center justify-center">
+                                                            <div className="absolute inset-0 border-[0.5px] border-black/10 rounded-md grid grid-cols-2 grid-rows-2 gap-[1px]">
+                                                                <div className="border-[0.5px] border-black/10 rounded-tl-md"></div>
+                                                                <div className="border-[0.5px] border-black/10 rounded-tr-md"></div>
+                                                                <div className="border-[0.5px] border-black/10 rounded-bl-md"></div>
+                                                                <div className="border-[0.5px] border-black/10 rounded-br-md"></div>
                                                             </div>
-                                                            <QRCodeSVG
-                                                                value={`HMS-WALLET://${wallet.id}?card=${wallet.cardNumber}&pkg=${wallet.packageType}`}
-                                                                size={70}
-                                                            />
                                                         </div>
                                                     </div>
+
+                                                    {/* Contactless Icon */}
+                                                    <div className="absolute top-24 right-8 transform rotate-90 text-white/50">
+                                                        <Wifi size={24} />
+                                                    </div>
                                                 </div>
-
-
-
-
-
 
                                                 {/* Card Actions */}
                                                 <div className="flex gap-2 mt-3">
@@ -383,15 +406,6 @@ const WalletDashboard = () => {
                                                     >
                                                         <Plus size={14} />
                                                         Top Up
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            setQRWallet(wallet);
-                                                            setShowQRModal(true);
-                                                        }}
-                                                        className="px-3 py-2 bg-emerald-100 hover:bg-emerald-200 rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition-colors text-emerald-700"
-                                                    >
-                                                        <QrCode size={14} />
                                                     </button>
                                                 </div>
 

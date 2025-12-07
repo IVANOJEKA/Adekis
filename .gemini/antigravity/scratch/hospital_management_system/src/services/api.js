@@ -1,7 +1,10 @@
 import axios from 'axios';
 
-// API Base URL - production backend on Render
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://hms-backend-13vb.onrender.com/api';
+// API Base URL - determines if running locally or in production
+const API_BASE_URL = import.meta.env.VITE_API_URL ||
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://localhost:5000/api'
+        : 'https://hms-backend-13vb.onrender.com/api');
 
 // Create axios instance with default config
 const api = axios.create({
@@ -30,10 +33,11 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            // Token expired or invalid - clear auth and redirect to login
+            // Token expired or invalid - clear auth and emit event
             localStorage.removeItem('hms_auth_token');
             localStorage.removeItem('hms_auth_user');
-            window.location.href = '/staff-login';
+            // Dispatch event for AuthContext to handle redirect gracefully
+            window.dispatchEvent(new Event('auth:unauthorized'));
         }
         return Promise.reject(error);
     }
@@ -157,6 +161,29 @@ export const prescriptionsAPI = {
     }
 };
 
+// ==================== QUEUE API ====================
+
+export const queueAPI = {
+    getAll: async (params = {}) => {
+        const response = await api.get('/queue', { params });
+        return response.data.queue || response.data;
+    },
+
+    create: async (queueData) => {
+        const response = await api.post('/queue', queueData);
+        return response.data;
+    },
+
+    update: async (id, queueData) => {
+        const response = await api.put(`/queue/${id}`, queueData);
+        return response.data;
+    },
+
+    delete: async (id) => {
+        const response = await api.delete(`/queue/${id}`);
+        return response.data;
+    }
+};
 // ==================== BILLS API ====================
 
 export const billsAPI = {
@@ -195,24 +222,7 @@ export const servicesAPI = {
     }
 };
 
-// ==================== QUEUE API ====================
 
-export const queueAPI = {
-    getAll: async (params = {}) => {
-        const response = await api.get('/queue', { params });
-        return response.data.queue || response.data;
-    },
-
-    create: async (queueData) => {
-        const response = await api.post('/queue', queueData);
-        return response.data.entry;
-    },
-
-    update: async (id, queueData) => {
-        const response = await api.put(`/queue/${id}`, queueData);
-        return response.data.entry;
-    }
-};
 
 // ==================== CASES API ====================
 
@@ -705,7 +715,7 @@ export const walletAPI = {
 
 // ==================== BED MANAGEMENT API ====================
 
-export const bedMgmtAPI = {
+export const bedManagementAPI = {
     // Get all wards
     getWards: async (params) => {
         const response = await api.get('/bed-management/wards', { params });

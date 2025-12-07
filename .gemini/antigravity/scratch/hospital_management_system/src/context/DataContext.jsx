@@ -53,6 +53,31 @@ const initialUserData = [
     { id: 'U-007', name: 'Jane Finance', email: 'finance@adekisplus.com', password: 'finance123', role: 'Finance Officer', department: 'Finance', status: 'Active', permissions: null },
 ];
 
+// Module Control Initial Data
+const initialModules = [
+    { id: 'reception', name: 'Reception', enabled: true, description: 'Patient registration and appointments' },
+    { id: 'doctor', name: 'Doctor', enabled: true, description: 'Doctor dashboard and consultations' },
+    { id: 'emr', name: 'EMR', enabled: true, description: 'Electronic Medical Records' },
+    { id: 'pharmacy', name: 'Pharmacy', enabled: true, description: 'Medication dispensation and inventory' },
+    { id: 'laboratory', name: 'Laboratory', enabled: true, description: 'Lab tests and results' },
+    { id: 'radiology', name: 'Radiology', enabled: true, description: 'Imaging and reports' },
+    { id: 'nursing', name: 'Nursing Care', enabled: true, description: 'Patient care and vitals' },
+    { id: 'theatre', name: 'Theatre', enabled: true, description: 'Surgery and operation management' },
+    { id: 'maternity', name: 'Maternity', enabled: true, description: 'Labor and delivery' },
+    { id: 'finance', name: 'Finance & Insurance', enabled: true, description: 'Billing, insurance, and expenses' },
+    { id: 'hr', name: 'HR Management', enabled: true, description: 'Staff, attendance, and payroll' },
+    { id: 'blood-bank', name: 'Blood Bank', enabled: true, description: 'Blood inventory and requests' },
+    { id: 'ambulance', name: 'Ambulance', enabled: true, description: 'Emergency response and transport' },
+    { id: 'camps', name: 'Health Camps', enabled: true, description: 'Outreach programs' },
+    { id: 'queue', name: 'Queue Mgmt', enabled: true, description: 'Patient queue management' },
+    { id: 'triage', name: 'Triage Station', enabled: true, description: 'Patient priority assessment' },
+    { id: 'bed-management', name: 'Bed Management', enabled: true, description: 'Ward and bed occupancy' },
+    { id: 'reports', name: 'Reports & Records', enabled: true, description: 'System reports and analytics' },
+    { id: 'communication', name: 'Communication', enabled: true, description: 'Messaging and notifications' },
+    { id: 'services', name: 'Services & Prices', enabled: true, description: 'Service catalog management' },
+    { id: 'wallet', name: 'HMS Wallet', enabled: true, description: 'Patient wallet system' },
+];
+
 // System Settings - Consultation Fees and Configuration
 const initialSystemSettings = {
     hospitalName: 'Central Hospital',
@@ -1905,6 +1930,13 @@ const initialCasesData = [
 ];
 
 export const DataProvider = ({ children }) => {
+    // Module State
+    const [modules, setModules] = useState(initialModules);
+
+    const toggleModule = (moduleId) => {
+        setModules(prev => prev.map(m => m.id === moduleId ? { ...m, enabled: !m.enabled } : m));
+    };
+
     // Insurance Module State - USING API
     const [insuranceProviders, setInsuranceProviders] = useState([]);
     const [insuranceClaims, setInsuranceClaims] = useState([]);
@@ -3434,7 +3466,9 @@ export const DataProvider = ({ children }) => {
         createLeaveRequest,
         updateLeaveRequestStatus,
         createPayrollEntry,
-        updatePayrollStatus
+        updatePayrollStatus,
+        modules,
+        toggleModule
     };
 
     return (

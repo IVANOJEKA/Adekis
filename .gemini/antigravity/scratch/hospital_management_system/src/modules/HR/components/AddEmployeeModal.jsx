@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Users, UserPlus, Briefcase, Clock, CalendarCheck, Award, DollarSign, Search, X } from 'lucide-react';
-import { useData } from '../../context/DataContext';
-import { generateNextEmployeeId } from '../../utils/employeeIdUtils';
+import { useData } from '../../../context/DataContext';
+import { generateNextEmployeeId } from '../../../utils/employeeIdUtils';
 
 const AddEmployeeModal = ({ show, onClose, employees, departments, onAdd }) => {
     const [formData, setFormData] = useState({

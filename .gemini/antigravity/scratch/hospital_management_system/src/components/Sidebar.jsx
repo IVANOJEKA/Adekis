@@ -2,11 +2,13 @@ import React, { useMemo } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBranding } from '../context/BrandingContext';
+import { useData } from '../context/DataContext';
 import { LogOut } from 'lucide-react';
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
   const { currentUser, isAuthenticated, hasPermission, logout } = useAuth();
   const { branding } = useBranding();
+  const { modules } = useData();
   const navigate = useNavigate();
 
   const allMenuItems = [
@@ -38,11 +40,25 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     { path: '/settings', label: 'Settings', permission: 'settings' },
   ];
 
-  // Filter menu items based on user permissions
+  // Filter menu items based on user permissions and enabled modules
   const menuItems = useMemo(() => {
     if (!isAuthenticated) return allMenuItems;
-    return allMenuItems.filter(item => hasPermission(item.permission));
-  }, [isAuthenticated, currentUser]);
+
+    return allMenuItems.filter(item => {
+      // 1. Check User Permission
+      if (!hasPermission(item.permission)) return false;
+
+      // 2. Check if Module is Enabled
+      // Find module by ID matching the permission (e.g., 'pharmacy', 'doctor')
+      const module = modules.find(m => m.id === item.permission);
+
+      // If module exists in configuration and is disabled, hide it
+      // Items without a corresponding module (e.g., Dashboard) are always shown (if permission allows)
+      if (module && !module.enabled) return false;
+
+      return true;
+    });
+  }, [isAuthenticated, currentUser, modules]);
 
   const handleLogout = () => {
     logout();
@@ -101,38 +117,17 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
 
         {/* Footer */}
         <div className="p-4 border-t border-slate-100">
-          {isAuthenticated && currentUser ? (
-            <>
-              <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-50 border border-slate-100 mb-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-xs font-bold text-white">
-                  {currentUser.name.charAt(0)}
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  <p className="text-sm font-bold text-slate-700 truncate">{currentUser.name}</p>
-                  <p className="text-xs text-slate-500 truncate">{currentUser.role}</p>
-                </div>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
-              >
-                <LogOut size={16} />
-                <span>Logout</span>
-              </button>
-            </>
-          ) : (
-            <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-50 border border-slate-100">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-xs font-bold text-white">
-                AD
-              </div>
-              <div className="overflow-hidden">
-                <p className="text-sm font-bold text-slate-700 truncate">Guest User</p>
-                <p className="text-xs text-slate-500 truncate">Not logged in</p>
-              </div>
+          <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-50 border border-slate-100">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-xs font-bold text-white">
+              A+
             </div>
-          )}
+            <div className="overflow-hidden">
+              <p className="text-sm font-bold text-slate-700 truncate">Powered by Adekis +</p>
+              <p className="text-xs text-slate-500 truncate">Hospital Management System</p>
+            </div>
+          </div>
         </div>
-      </aside>
+      </aside >
     </>
   );
 };

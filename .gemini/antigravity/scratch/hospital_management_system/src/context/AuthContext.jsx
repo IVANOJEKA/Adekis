@@ -85,6 +85,19 @@ export const AuthProvider = ({ children }) => {
             }
         }
         setLoading(false);
+        // Listen for 401 unauthorized events from api.js
+        const handleUnauthorized = () => {
+            setCurrentUser(null);
+            setIsAuthenticated(false);
+            localStorage.removeItem('hms_auth_token');
+            localStorage.removeItem('hms_auth_user');
+        };
+
+        window.addEventListener('auth:unauthorized', handleUnauthorized);
+
+        return () => {
+            window.removeEventListener('auth:unauthorized', handleUnauthorized);
+        };
     }, []);
 
     const login = async (email, password) => {

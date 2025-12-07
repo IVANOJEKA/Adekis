@@ -166,6 +166,53 @@ const BedManagementDashboard = () => {
         setAdminOverride(false);
     };
 
+    // Handle patient admission
+    const handleAdmit = (bedId, patientId, diagnosis) => {
+        if (!bedId || !patientId || !diagnosis) {
+            alert('Please fill in all required fields');
+            return;
+        }
+
+        const bed = beds.find(b => b.id === bedId);
+        if (!bed || bed.status !== 'Available') {
+            alert('Selected bed is not available');
+            return;
+        }
+
+        // Call the context function to admit patient
+        admitPatientToBed(patientId, bedId, diagnosis);
+
+        // Close modal and reset
+        setShowAdmitModal(false);
+        setSelectedBed(null);
+    };
+
+    // Handle bed transfer
+    const handleTransfer = (admissionId, newBedId) => {
+        const admission = admissions.find(a => a.id === admissionId);
+        const newBed = beds.find(b => b.id === newBedId);
+
+        if (!admission || !newBed) {
+            alert('Invalid transfer request');
+            return;
+        }
+
+        if (newBed.status !== 'Available') {
+            alert('Target bed is not available');
+            return;
+        }
+
+        // Discharge from current bed and admit to new bed
+        dischargePatientFromBed(admission.bedId);
+        admitPatientToBed(admission.patientId, newBedId, admission.diagnosis);
+
+        // Close modal and reset
+        setShowTransferModal(false);
+        setSelectedBed(null);
+
+        alert('Patient transferred successfully!');
+    };
+
     const getStatusColor = (status) => {
         switch (status) {
             case 'Occupied': return 'bg-red-100 border-red-300 text-red-700';
@@ -445,12 +492,13 @@ const BedManagementDashboard = () => {
                             </div>
                             <form onSubmit={(e) => {
                                 e.preventDefault();
+                                console.log('Form submitted!');
                                 const formData = new FormData(e.target);
-                                handleAdmit(
-                                    formData.get('bedId'),
-                                    formData.get('patientId'),
-                                    formData.get('diagnosis')
-                                );
+                                const bedId = formData.get('bedId');
+                                const patientId = formData.get('patientId');
+                                const diagnosis = formData.get('diagnosis');
+                                console.log('Form data:', { bedId, patientId, diagnosis });
+                                handleAdmit(bedId, patientId, diagnosis);
                             }} className="p-6 space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-1">Select Bed</label>
@@ -481,7 +529,7 @@ const BedManagementDashboard = () => {
                                         <option value="">Choose a patient...</option>
                                         {patients.map(patient => (
                                             <option key={patient.id} value={patient.id}>
-                                                {patient.name} ({patient.id})
+                                                {patient.name} ({patient.age || 'N/A'} yrs)
                                             </option>
                                         ))}
                                     </select>

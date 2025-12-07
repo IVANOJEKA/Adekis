@@ -23,7 +23,16 @@ router.get('/', async (req, res) => {
             orderBy: [
                 { priority: 'asc' },
                 { checkInTime: 'asc' }
-            ]
+            ],
+            include: {
+                patient: {
+                    select: {
+                        patientId: true,
+                        gender: true,
+                        dateOfBirth: true
+                    }
+                }
+            }
         });
 
         res.json({ queue });

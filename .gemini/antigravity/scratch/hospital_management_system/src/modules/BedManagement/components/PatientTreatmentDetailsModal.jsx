@@ -20,6 +20,12 @@ const PatientTreatmentDetailsModal = ({
     onLogMedication
 }) => {
     const [activeTab, setActiveTab] = useState('overview');
+
+    // Safety check - return null if patient is not defined
+    if (!patient || !admission || !bed || !ward) {
+        return null;
+    }
+
     const balanceDue = totalBillAmount - totalPaid;
     const billPercentPaid = totalBillAmount > 0 ? ((totalPaid / totalBillAmount) * 100).toFixed(1) : 100;
     const isBillFullyPaid = balanceDue <= 0;
@@ -81,8 +87,8 @@ const PatientTreatmentDetailsModal = ({
                         <button
                             onClick={() => setActiveTab('overview')}
                             className={`px-6 py-3 font-medium border-b-2 transition-colors ${activeTab === 'overview'
-                                    ? 'border-blue-600 text-blue-600'
-                                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                                ? 'border-blue-600 text-blue-600'
+                                : 'border-transparent text-slate-500 hover:text-slate-700'
                                 }`}
                         >
                             <div className="flex items-center gap-2">
@@ -93,8 +99,8 @@ const PatientTreatmentDetailsModal = ({
                         <button
                             onClick={() => setActiveTab('treatment')}
                             className={`px-6 py-3 font-medium border-b-2 transition-colors ${activeTab === 'treatment'
-                                    ? 'border-blue-600 text-blue-600'
-                                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                                ? 'border-blue-600 text-blue-600'
+                                : 'border-transparent text-slate-500 hover:text-slate-700'
                                 }`}
                         >
                             <div className="flex items-center gap-2">
@@ -292,8 +298,8 @@ const PatientTreatmentDetailsModal = ({
                                                             <p className="text-xs text-slate-500">Date: {prescription.date}</p>
                                                         </div>
                                                         <span className={`px-3 py-1 rounded-full text-xs font-bold ${prescription.status === 'Pending' ? 'bg-amber-100 text-amber-700' :
-                                                                prescription.status === 'Cleared' ? 'bg-blue-100 text-blue-700' :
-                                                                    'bg-emerald-100 text-emerald-700'
+                                                            prescription.status === 'Cleared' ? 'bg-blue-100 text-blue-700' :
+                                                                'bg-emerald-100 text-emerald-700'
                                                             }`}>
                                                             {prescription.status}
                                                         </span>
@@ -390,8 +396,8 @@ const PatientTreatmentDetailsModal = ({
                             onClick={onDischarge}
                             disabled={!canDischarge && !isBillFullyPaid}
                             className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${canDischarge || isBillFullyPaid
-                                    ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                                 }`}
                             title={!canDischarge && !isBillFullyPaid ? 'Cannot discharge: Outstanding bill must be paid or Administrator approval required' : 'Discharge patient'}
                         >

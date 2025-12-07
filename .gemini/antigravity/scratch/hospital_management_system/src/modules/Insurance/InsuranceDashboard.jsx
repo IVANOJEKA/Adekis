@@ -1,13 +1,20 @@
 import React, { useState } from 'react';
-import { Shield, Building2, FileText, TrendingUp, CheckCircle, Clock, XCircle, DollarSign, Users, Search, Plus, Eye, Edit, Download, Activity, CreditCard, AlertCircle, Loader } from 'lucide-react';
+import { Shield, Building2, FileText, TrendingUp, CheckCircle, Clock, XCircle, DollarSign, Users, Search, Plus, Eye, Edit, Download, Activity, CreditCard, AlertCircle, Loader, Settings } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { insuranceAPI } from '../../services/api';
+import ProviderRegistration from './components/ProviderRegistration';
+import InsuranceProviders from './components/InsuranceProviders';
+import EnhancedVerificationModal from './components/EnhancedVerificationModal';
+import PreAuthorizationManager from './components/PreAuthorizationManager';
+import InsuranceReports from './components/InsuranceReports';
 
 const InsuranceDashboard = () => {
     const [activeTab, setActiveTab] = useState('overview');
     const [selectedClaim, setSelectedClaim] = useState(null);
     const [showNewClaimModal, setShowNewClaimModal] = useState(false);
     const [showVerificationModal, setShowVerificationModal] = useState(false);
+    const [showProviderRegistration, setShowProviderRegistration] = useState(false);
+    const [showEnhancedVerification, setShowEnhancedVerification] = useState(false);
 
     // Verification State
     const [verificationData, setVerificationData] = useState({
@@ -32,6 +39,7 @@ const InsuranceDashboard = () => {
     const {
         insuranceProviders = [],
         insuranceClaims = [],
+        hospitalProfile,
         addInsuranceProvider,
         submitInsuranceClaim
     } = useData();
@@ -106,11 +114,11 @@ const InsuranceDashboard = () => {
                 </div>
                 <div className="flex gap-3">
                     <button
-                        onClick={() => setShowVerificationModal(true)}
+                        onClick={() => setShowEnhancedVerification(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium"
                     >
                         <CheckCircle size={16} className="text-emerald-500" />
-                        Verify Member
+                        Verify Coverage
                     </button>
                     <button
                         onClick={() => setShowNewClaimModal(true)}
@@ -150,7 +158,7 @@ const InsuranceDashboard = () => {
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
                 {/* Tabs */}
                 <div className="flex items-center gap-1 p-2 border-b border-slate-100 bg-slate-50/50 overflow-x-auto">
-                    {['Overview', 'Providers', 'Claims'].map((tab) => {
+                    {['Overview', 'Provider Profile', 'Providers', 'Pre-Authorization', 'Reports', 'Claims'].map((tab) => {
                         const tabKey = tab.toLowerCase();
                         const isActive = activeTab === tabKey;
                         return (
@@ -170,6 +178,69 @@ const InsuranceDashboard = () => {
 
                 {/* Tab Content */}
                 <div className="p-6">
+                    {activeTab === 'provider profile' && (
+                        <div className="space-y-6">
+                            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-3 bg-blue-100 rounded-lg">
+                                            <Building2 size={24} className="text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-bold text-slate-800">Hospital Provider Profile</h3>
+                                            <p className="text-sm text-slate-600">Complete your profile for insurance company registration</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowProviderRegistration(true)}
+                                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                    >
+                                        <Settings size={18} />
+                                        Edit Profile
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+                                    <div className="bg-white p-4 rounded-lg">
+                                        <p className="text-xs text-slate-500 mb-1">Hospital Name</p>
+                                        <p className="font-bold text-slate-800">{hospitalProfile?.name || 'Not Set'}</p>
+                                    </div>
+                                    <div className="bg-white p-4 rounded-lg">
+                                        <p className="text-xs text-slate-500 mb-1">License Number</p>
+                                        <p className="font-bold text-slate-800">{hospitalProfile?.licenseNumber || 'Not Set'}</p>
+                                    </div>
+                                    <div className="bg-white p-4 rounded-lg">
+                                        <p className="text-xs text-slate-500 mb-1">Tax ID</p>
+                                        <p className="font-bold text-slate-800">{hospitalProfile?.taxId || 'Not Set'}</p>
+                                    </div>
+                                    <div className="bg-white p-4 rounded-lg">
+                                        <p className="text-xs text-slate-500 mb-1">Phone</p>
+                                        <p className="font-bold text-slate-800">{hospitalProfile?.phone || 'Not Set'}</p>
+                                    </div>
+                                    <div className="bg-white p-4 rounded-lg">
+                                        <p className="text-xs text-slate-500 mb-1">Email</p>
+                                        <p className="font-bold text-slate-800">{hospitalProfile?.email || 'Not Set'}</p>
+                                    </div>
+                                    <div className="bg-white p-4 rounded-lg">
+                                        <p className="text-xs text-slate-500 mb-1">Address</p>
+                                        <p className="font-bold text-slate-800 text-sm">{hospitalProfile?.address || 'Not Set'}</p>
+                                    </div>
+                                </div>
+                                {hospitalProfile?.specialties && hospitalProfile.specialties.length > 0 && (
+                                    <div className="mt-4 pt-4 border-t border-blue-200">
+                                        <p className="text-xs text-slate-500 mb-2">Specialties</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {hospitalProfile.specialties.map((spec, idx) => (
+                                                <span key={idx} className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+                                                    {spec}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     {activeTab === 'overview' && (
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -228,31 +299,16 @@ const InsuranceDashboard = () => {
                         </div>
                     )}
 
+                    {activeTab === 'pre-authorization' && (
+                        <PreAuthorizationManager />
+                    )}
+
                     {activeTab === 'providers' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {allProviders.map((provider) => (
-                                <div key={provider.id} className="border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow">
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                                                <Building2 size={24} className="text-primary" />
-                                            </div>
-                                            <div>
-                                                <h3 className="font-bold text-slate-800 text-sm">{provider.name}</h3>
-                                                <p className="text-xs text-slate-500">{provider.country}</p>
-                                            </div>
-                                        </div>
-                                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${provider.apiEnabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                                            {provider.apiEnabled ? 'API Enabled' : 'Manual'}
-                                        </span>
-                                    </div>
-                                    <div className="space-y-2 text-sm text-slate-600">
-                                        <p className="flex items-center gap-2"><Clock size={14} /> {provider.averageProcessingDays} days avg. processing</p>
-                                        <p className="flex items-center gap-2"><CreditCard size={14} /> {provider.coverageTypes.length} coverage types</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                        <InsuranceProviders />
+                    )}
+
+                    {activeTab === 'reports' && (
+                        <InsuranceReports />
                     )}
 
                     {activeTab === 'claims' && (
@@ -407,6 +463,16 @@ const InsuranceDashboard = () => {
                         </form>
                     </div>
                 </div>
+            )}
+
+            {/* Provider Registration Modal */}
+            {showProviderRegistration && (
+                <ProviderRegistration onClose={() => setShowProviderRegistration(false)} />
+            )}
+
+            {/* Enhanced Verification Modal */}
+            {showEnhancedVerification && (
+                <EnhancedVerificationModal onClose={() => setShowEnhancedVerification(false)} />
             )}
         </div>
     );

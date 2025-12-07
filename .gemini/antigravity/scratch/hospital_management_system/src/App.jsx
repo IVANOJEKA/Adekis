@@ -56,16 +56,13 @@ const PageLoader = () => (
 function App() {
   // Register service worker for offline functionality
   React.useEffect(() => {
+    // Unregister any existing service workers to fix refresh loop
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker
-          .register('/service-worker.js')
-          .then((registration) => {
-            console.log('[App] Service Worker registered:', registration.scope);
-          })
-          .catch((error) => {
-            console.error('[App] Service Worker registration failed:', error);
-          });
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (const registration of registrations) {
+          registration.unregister();
+          console.log('Service Worker unregistered');
+        }
       });
     }
   }, []);
@@ -89,6 +86,7 @@ function App() {
                         {/* Protected Staff Routes (With Layout & Auth) */}
                         <Route path="/" element={<Layout />}>
                           <Route index element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                          <Route path="dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                           <Route path="reception" element={<ProtectedRoute requiredPermission="reception"><ReceptionDashboard /></ProtectedRoute>} />
                           <Route path="doctor" element={<ProtectedRoute requiredPermission="doctor"><DoctorDashboard /></ProtectedRoute>} />
                           <Route path="emr" element={<ProtectedRoute requiredPermission="emr"><EMRDashboard /></ProtectedRoute>} />

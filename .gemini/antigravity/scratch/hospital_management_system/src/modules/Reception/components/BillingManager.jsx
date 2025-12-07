@@ -6,7 +6,7 @@ import { useCurrency } from '../../../context/CurrencyContext';
 import CardPaymentModal from '../../../components/CardPaymentModal';
 
 const BillingManager = () => {
-    const { financialRecords, updateBillStatus } = useData();
+    const { financialRecords, setFinancialRecords } = useData();
     const { getBalance, processWalletPayment } = useWallet();
     const { formatCurrency } = useCurrency();
 
@@ -40,7 +40,10 @@ const BillingManager = () => {
                 );
 
                 if (result.success) {
-                    updateBillStatus(selectedBill.id, 'Paid');
+                    // Update bill status to Paid
+                    setFinancialRecords(financialRecords.map(bill =>
+                        bill.id === selectedBill.id ? { ...bill, status: 'Paid', paymentMethod: 'Wallet' } : bill
+                    ));
                     alert(`Payment successful! New wallet balance: ${formatCurrency(result.transaction.balanceAfter)}`);
                     setSelectedBill(null);
                 } else {
@@ -52,7 +55,9 @@ const BillingManager = () => {
                 return; // Don't close the payment modal yet
             } else {
                 // Process cash/insurance payment
-                updateBillStatus(selectedBill.id, 'Paid');
+                setFinancialRecords(financialRecords.map(bill =>
+                    bill.id === selectedBill.id ? { ...bill, status: 'Paid', paymentMethod: paymentMethod === 'cash' ? 'Cash' : 'Insurance' } : bill
+                ));
                 setSelectedBill(null);
                 alert('Payment processed successfully!');
             }
@@ -278,14 +283,18 @@ const BillingManager = () => {
                     }}
                     onSuccess={(paymentResult) => {
                         // Update bill with card payment details
-                        updateBillStatus(selectedBill.id, 'Paid', {
-                            paymentMethod: 'Card',
-                            cardType: paymentResult.cardType,
-                            last4: paymentResult.last4,
-                            transactionId: paymentResult.transactionId,
-                            authorizationCode: paymentResult.authorizationCode,
-                            gateway: paymentResult.gateway
-                        });
+                        setFinancialRecords(financialRecords.map(bill =>
+                            bill.id === selectedBill.id ? {
+                                ...bill,
+                                status: 'Paid',
+                                paymentMethod: 'Card',
+                                cardType: paymentResult.cardType,
+                                last4: paymentResult.last4,
+                                transactionId: paymentResult.transactionId,
+                                authorizationCode: paymentResult.authorizationCode,
+                                gateway: paymentResult.gateway
+                            } : bill
+                        ));
 
                         setShowCardModal(false);
                         setSelectedBill(null);

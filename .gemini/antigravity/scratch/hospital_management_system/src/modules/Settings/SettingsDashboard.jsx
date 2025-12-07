@@ -15,7 +15,11 @@ const currencies = [
 ];
 
 const SettingsDashboard = () => {
-    const { biometricDevices, setBiometricDevices, printerSettings, setPrinterSettings } = useData();
+    const {
+        biometricDevices, setBiometricDevices,
+        printerSettings, setPrinterSettings,
+        modules, toggleModule
+    } = useData();
     const { branding } = useBranding();
     const [activeTab, setActiveTab] = useState('general');
     const [showAddUser, setShowAddUser] = useState(false);
@@ -87,19 +91,6 @@ const SettingsDashboard = () => {
         { id: 6, name: 'Lab Technician', users: 6, permissions: ['Laboratory', 'Test Results'] },
     ]);
 
-    const [modules, setModules] = useState([
-        { id: 1, name: 'Reception', enabled: true, description: 'Patient registration and appointments' },
-        { id: 2, name: 'EMR', enabled: true, description: 'Electronic Medical Records' },
-        { id: 3, name: 'Pharmacy', enabled: true, description: 'Pharmacy and inventory management' },
-        { id: 4, name: 'Laboratory', enabled: true, description: 'Lab tests and results' },
-        { id: 5, name: 'Radiology', enabled: true, description: 'Imaging and radiology services' },
-        { id: 6, name: 'Finance', enabled: true, description: 'Billing and financial management' },
-        { id: 7, name: 'Insurance', enabled: true, description: 'Insurance claims and verification' },
-        { id: 8, name: 'Doctor', enabled: true, description: 'Doctor dashboard and consultations' },
-        { id: 9, name: 'Nursing', enabled: true, description: 'Nursing care and vitals' },
-        { id: 10, name: 'Theatre', enabled: false, description: 'Operating theatre management' },
-    ]);
-
     const [newUser, setNewUser] = useState({
         name: '',
         email: '',
@@ -145,11 +136,13 @@ const SettingsDashboard = () => {
     };
 
     const handleToggleModule = (moduleId) => {
-        setModules(modules.map(m =>
-            m.id === moduleId ? { ...m, enabled: !m.enabled } : m
-        ));
+        toggleModule(moduleId);
         const module = modules.find(m => m.id === moduleId);
-        showToast(`${module.name} module ${module.enabled ? 'disabled' : 'enabled'}!`);
+        // Toast logic needs to wait for update or just assume toggle, let's assume toggle for toast msg
+        // But better yet, just generic toast or derived from current state which is async...
+        // We'll just say "Module status updated" or infer from current state (inverted)
+        const isNowEnabled = !module.enabled;
+        showToast(`${module.name} module ${isNowEnabled ? 'enabled' : 'disabled'}!`);
     };
 
     const handleBackup = () => {
@@ -636,8 +629,8 @@ const SettingsDashboard = () => {
                                                     </div>
                                                 </div>
                                                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${device.status === 'Online'
-                                                        ? 'bg-emerald-100 text-emerald-800'
-                                                        : 'bg-red-100 text-red-800'
+                                                    ? 'bg-emerald-100 text-emerald-800'
+                                                    : 'bg-red-100 text-red-800'
                                                     }`}>
                                                     {device.status}
                                                 </span>

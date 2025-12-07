@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { X, User, FileText, Clock, AlertTriangle } from 'lucide-react';
 
-const NewTestOrderModal = ({ onClose, onSubmit, patients = [], testCatalog = [], formatCurrency }) => {
+const NewTestOrderModal = ({ onClose, onSubmit, patients = [], testCatalog = [], formatCurrency, initialPatient = null }) => {
     const [formData, setFormData] = useState({
-        patientId: '',
-        patientName: '',
-        orderType: 'Doctor',
+        patientId: initialPatient?.id || initialPatient?.patientId || '',
+        patientName: initialPatient?.name || initialPatient?.patientName || '',
+        orderType: initialPatient ? (initialPatient.patientCategory === 'Walk-in' ? 'Walk-in' : 'Doctor') : 'Doctor',
         requestedBy: '',
         testType: '',
         priority: 'Routine',
@@ -75,8 +75,8 @@ const NewTestOrderModal = ({ onClose, onSubmit, patients = [], testCatalog = [],
                                 type="button"
                                 onClick={() => setFormData({ ...formData, orderType: 'Doctor' })}
                                 className={`p-4 border-2 rounded-lg transition-all ${formData.orderType === 'Doctor'
-                                        ? 'border-primary bg-primary/5 text-primary'
-                                        : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                                    ? 'border-primary bg-primary/5 text-primary'
+                                    : 'border-slate-200 text-slate-600 hover:border-slate-300'
                                     }`}
                             >
                                 <div className="font-bold">🩺 Doctor Order</div>
@@ -86,8 +86,8 @@ const NewTestOrderModal = ({ onClose, onSubmit, patients = [], testCatalog = [],
                                 type="button"
                                 onClick={() => setFormData({ ...formData, orderType: 'Walk-in' })}
                                 className={`p-4 border-2 rounded-lg transition-all ${formData.orderType === 'Walk-in'
-                                        ? 'border-primary bg-primary/5 text-primary'
-                                        : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                                    ? 'border-primary bg-primary/5 text-primary'
+                                    : 'border-slate-200 text-slate-600 hover:border-slate-300'
                                     }`}
                             >
                                 <div className="font-bold">🚶 Walk-in</div>
@@ -184,8 +184,8 @@ const NewTestOrderModal = ({ onClose, onSubmit, patients = [], testCatalog = [],
                                 type="button"
                                 onClick={() => setFormData({ ...formData, priority: 'Routine' })}
                                 className={`p-3 border-2 rounded-lg transition-all ${formData.priority === 'Routine'
-                                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                        : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                    : 'border-slate-200 text-slate-600 hover:border-slate-300'
                                     }`}
                             >
                                 <div className="font-bold">Routine</div>
@@ -195,8 +195,8 @@ const NewTestOrderModal = ({ onClose, onSubmit, patients = [], testCatalog = [],
                                 type="button"
                                 onClick={() => setFormData({ ...formData, priority: 'Urgent' })}
                                 className={`p-3 border-2 rounded-lg transition-all ${formData.priority === 'Urgent'
-                                        ? 'border-red-500 bg-red-50 text-red-700'
-                                        : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                                    ? 'border-red-500 bg-red-50 text-red-700'
+                                    : 'border-slate-200 text-slate-600 hover:border-slate-300'
                                     }`}
                             >
                                 <div className="font-bold flex items-center justify-center gap-1">

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { X, Scan, FileImage, Clock, User, Calendar, Search, Filter, Download, Upload, MessageSquare, AlertCircle, CheckCircle, Activity, Stethoscope, Users as UsersIcon, Phone, Mail, Send, Bell } from 'lucide-react';
+import { X, Scan, FileImage, Clock, User, Calendar, Search, Filter, Download, Upload, MessageSquare, AlertCircle, CheckCircle, Activity, Stethoscope, Users as UsersIcon, Phone, Mail, Send, Bell, FileText } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useCurrency } from '../../context/CurrencyContext';
 import NewImagingRequestModal from './components/NewImagingRequestModal';
+import ReportingModal from './components/ReportingModal';
+import TemplateManagerModal from './components/TemplateManagerModal';
 
 const RadiologyDashboard = () => {
     const { servicesData, addBill, patients = [] } = useData();
@@ -11,6 +13,8 @@ const RadiologyDashboard = () => {
     const [statusFilter, setStatusFilter] = useState('all');
     const [modalityFilter, setModalityFilter] = useState('all');
     const [showNewRequestModal, setShowNewRequestModal] = useState(false);
+    const [showTemplateManager, setShowTemplateManager] = useState(false);
+    const [reportingOrder, setReportingOrder] = useState(null);
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
     // Filter services for Radiology
@@ -137,6 +141,14 @@ const RadiologyDashboard = () => {
         ));
     };
 
+    const handleSaveReport = (updatedOrder) => {
+        setImagingOrders(imagingOrders.map(order =>
+            order.id === updatedOrder.id ? updatedOrder : order
+        ));
+        setReportingOrder(null);
+        showToast('Report saved and signed successfully!', 'success');
+    };
+
     const getStatusColor = (status) => {
         const colors = {
             'Pending': 'bg-amber-100 text-amber-700',
@@ -179,15 +191,21 @@ const RadiologyDashboard = () => {
                 </div>
                 <div className="flex gap-3">
                     <button
-                        onClick={() => setShowNewRequestModal(true)}
+                        onClick={() => setShowTemplateManager(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium"
+                    >
+                        <FileImage size={16} />
+                        Manage Templates
+                    </button>
+                    <button
+                        onClick={() => {
+                            setShowNewRequestModal(true);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
                         className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium shadow-lg shadow-primary/30"
                     >
                         <Scan size={16} />
-                        New Imaging Request
-                    </button>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium">
-                        <Download size={16} />
-                        Export Report
+                        Start New Radiology Scan
                     </button>
                 </div>
             </div>
@@ -327,10 +345,11 @@ const RadiologyDashboard = () => {
                                                 )}
                                                 {order.status === 'In Progress' && (
                                                     <button
-                                                        onClick={() => handleUpdateStatus(order.id, 'Completed')}
-                                                        className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 text-sm font-medium whitespace-nowrap"
+                                                        onClick={() => setReportingOrder(order)}
+                                                        className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 text-sm font-medium whitespace-nowrap flex items-center gap-2"
                                                     >
-                                                        Mark Complete
+                                                        <FileText size={16} />
+                                                        Enter Results / Report
                                                     </button>
                                                 )}
                                                 <button className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-medium whitespace-nowrap">
@@ -340,8 +359,12 @@ const RadiologyDashboard = () => {
                                                     Upload Images
                                                 </button>
                                                 {order.status === 'Completed' && (
-                                                    <button className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 text-sm font-medium whitespace-nowrap">
-                                                        Send Report
+                                                    <button
+                                                        onClick={() => setReportingOrder(order)}
+                                                        className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 text-sm font-medium whitespace-nowrap flex items-center gap-2"
+                                                    >
+                                                        <FileText size={16} />
+                                                        View/Edit Report
                                                     </button>
                                                 )}
                                             </div>
@@ -578,6 +601,21 @@ const RadiologyDashboard = () => {
                     patients={patients}
                     radiologyServices={radiologyServices}
                     formatCurrency={formatCurrency}
+                />
+            )}
+
+            {showTemplateManager && (
+                <TemplateManagerModal
+                    onClose={() => setShowTemplateManager(false)}
+                />
+            )}
+
+            {reportingOrder && (
+                <ReportingModal
+                    order={reportingOrder}
+                    onClose={() => setReportingOrder(null)}
+                    onSave={handleSaveReport}
+                    onOpenTemplateManager={() => setShowTemplateManager(true)}
                 />
             )}
         </div>

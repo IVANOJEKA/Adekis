@@ -133,9 +133,10 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'Name, date of birth, and gender are required' });
         }
 
-        // Generate patient ID (PAT-XXXXX)
+        // Generate patient ID (P-XXX format for short readable IDs)
         const patientCount = await prisma.patient.count({ where: { hospitalId } });
-        const patientId = `PAT-${String(patientCount + 1).padStart(5, '0')}`;
+        const patientId = `P-${String(patientCount + 1).padStart(3, '0')}`;
+
 
         // Create patient
         const patient = await prisma.patient.create({

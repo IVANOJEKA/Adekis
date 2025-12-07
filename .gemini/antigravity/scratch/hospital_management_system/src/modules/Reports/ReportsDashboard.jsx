@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { FileText, Download, Printer, Calendar, Filter, Search, TrendingUp, Users, DollarSign, Activity, TestTube, Pill, Hotel, X, FileBarChart, Archive, Eye, RefreshCw, Clock, Mail, Send, Plus, Trash2, Edit } from 'lucide-react';
 
 const ReportsDashboard = () => {
@@ -382,8 +383,8 @@ const ReportsDashboard = () => {
                                 key={tab}
                                 onClick={() => setActiveTab(tabKey)}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${isActive
-                                        ? 'bg-white text-slate-800 shadow-sm ring-1 ring-slate-200'
-                                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+                                    ? 'bg-white text-slate-800 shadow-sm ring-1 ring-slate-200'
+                                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
                                     }`}
                             >
                                 {tab}
@@ -538,9 +539,9 @@ const ReportsDashboard = () => {
             </div>
 
             {/* View Report Modal */}
-            {showViewModal && selectedReport && (
+            {showViewModal && selectedReport && createPortal(
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden animate-fade-in">
                         <div className="p-6 border-b border-slate-200 flex justify-between items-center">
                             <div>
                                 <h2 className="text-2xl font-bold text-slate-800">{selectedReport.title}</h2>
@@ -606,8 +607,7 @@ const ReportsDashboard = () => {
                         <div className="p-6 border-t border-slate-200 flex gap-3 justify-end">
                             <button
                                 onClick={() => setShowViewModal(false)}
-                                className="px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50"
-                            >
+                                className="px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50">
                                 Close
                             </button>
                             <button
@@ -615,224 +615,236 @@ const ReportsDashboard = () => {
                                     handleDownload(selectedReport, exportFormat);
                                     setShowViewModal(false);
                                 }}
-                                className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600"
-                            >
+                                className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600">
                                 Download Report
                             </button>
                         </div>
                     </div>
-                </div>
+                </div >,
+                document.body
             )}
 
             {/* Custom Report Modal */}
-            {showCustomReportModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
-                        <div className="p-6 border-b border-slate-200 flex justify-between items-center">
-                            <h2 className="text-2xl font-bold text-slate-800">Generate Custom Report</h2>
-                            <button
-                                onClick={() => setShowCustomReportModal(false)}
-                                className="p-2 hover:bg-slate-100 rounded-lg"
-                            >
-                                <X size={24} />
-                            </button>
-                        </div>
+            {
+                showCustomReportModal && createPortal(
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden animate-fade-in">
+                            <div className="p-6 border-b border-slate-200 flex justify-between items-center">
+                                <h2 className="text-2xl font-bold text-slate-800">Generate Custom Report</h2>
+                                <button
+                                    onClick={() => setShowCustomReportModal(false)}
+                                    className="p-2 hover:bg-slate-100 rounded-lg"
+                                >
+                                    <X size={24} />
+                                </button>
+                            </div>
 
-                        <div className="p-6 overflow-y-auto max-h-[60vh] space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-sm font-medium text-slate-700 mb-2 block">Report Name</label>
-                                    <input
-                                        type="text"
-                                        value={customReport.name}
-                                        onChange={(e) => setCustomReport({ ...customReport, name: e.target.value })}
-                                        placeholder="Enter report name"
-                                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
-                                    />
+                            <div className="p-6 overflow-y-auto max-h-[60vh] space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-sm font-medium text-slate-700 mb-2 block">Report Name</label>
+                                        <input
+                                            type="text"
+                                            value={customReport.name}
+                                            onChange={(e) => setCustomReport({ ...customReport, name: e.target.value })}
+                                            placeholder="Enter report name"
+                                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-slate-700 mb-2 block">Report Type</label>
+                                        <select
+                                            value={customReport.type}
+                                            onChange={(e) => setCustomReport({ ...customReport, type: e.target.value })}
+                                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+                                        >
+                                            <option>Financial</option>
+                                            <option>Clinical</option>
+                                            <option>Operational</option>
+                                            <option>Patient</option>
+                                            <option>Quality</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-slate-700 mb-2 block">Department</label>
+                                        <select
+                                            value={customReport.department}
+                                            onChange={(e) => setCustomReport({ ...customReport, department: e.target.value })}
+                                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+                                        >
+                                            <option value="all">All Departments</option>
+                                            <option value="Finance">Finance</option>
+                                            <option value="Laboratory">Laboratory</option>
+                                            <option value="Radiology">Radiology</option>
+                                            <option value="Pharmacy">Pharmacy</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-slate-700 mb-2 block">Date Range</label>
+                                        <select
+                                            value={customReport.dateRange}
+                                            onChange={(e) => setCustomReport({ ...customReport, dateRange: e.target.value })}
+                                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+                                        >
+                                            <option value="last-7-days">Last 7 Days</option>
+                                            <option value="last-30-days">Last 30 Days</option>
+                                            <option value="last-3-months">Last 3 Months</option>
+                                            <option value="last-year">Last Year</option>
+                                        </select>
+                                    </div>
                                 </div>
+
                                 <div>
-                                    <label className="text-sm font-medium text-slate-700 mb-2 block">Report Type</label>
-                                    <select
-                                        value={customReport.type}
-                                        onChange={(e) => setCustomReport({ ...customReport, type: e.target.value })}
-                                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
-                                    >
-                                        <option>Financial</option>
-                                        <option>Clinical</option>
-                                        <option>Operational</option>
-                                        <option>Patient</option>
-                                        <option>Quality</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-slate-700 mb-2 block">Department</label>
-                                    <select
-                                        value={customReport.department}
-                                        onChange={(e) => setCustomReport({ ...customReport, department: e.target.value })}
-                                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
-                                    >
-                                        <option value="all">All Departments</option>
-                                        <option value="Finance">Finance</option>
-                                        <option value="Laboratory">Laboratory</option>
-                                        <option value="Radiology">Radiology</option>
-                                        <option value="Pharmacy">Pharmacy</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-slate-700 mb-2 block">Date Range</label>
-                                    <select
-                                        value={customReport.dateRange}
-                                        onChange={(e) => setCustomReport({ ...customReport, dateRange: e.target.value })}
-                                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
-                                    >
-                                        <option value="last-7-days">Last 7 Days</option>
-                                        <option value="last-30-days">Last 30 Days</option>
-                                        <option value="last-3-months">Last 3 Months</option>
-                                        <option value="last-year">Last Year</option>
-                                    </select>
+                                    <label className="text-sm font-medium text-slate-700 mb-2 block">Include Data Fields</label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {Object.keys(customReport.includeFields).map((field) => (
+                                            <label key={field} className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    className="w-4 h-4 text-primary rounded"
+                                                    checked={customReport.includeFields[field]}
+                                                    onChange={(e) => setCustomReport({
+                                                        ...customReport,
+                                                        includeFields: {
+                                                            ...customReport.includeFields,
+                                                            [field]: e.target.checked
+                                                        }
+                                                    })}
+                                                />
+                                                <span className="text-sm text-slate-700 capitalize">{field.replace(/([A-Z])/g, ' $1').trim()}</span>
+                                            </label>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="text-sm font-medium text-slate-700 mb-2 block">Include Data Fields</label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {Object.keys(customReport.includeFields).map((field) => (
-                                        <label key={field} className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                className="w-4 h-4 text-primary rounded"
-                                                checked={customReport.includeFields[field]}
-                                                onChange={(e) => setCustomReport({
-                                                    ...customReport,
-                                                    includeFields: {
-                                                        ...customReport.includeFields,
-                                                        [field]: e.target.checked
-                                                    }
-                                                })}
-                                            />
-                                            <span className="text-sm text-slate-700 capitalize">{field.replace(/([A-Z])/g, ' $1').trim()}</span>
-                                        </label>
-                                    ))}
-                                </div>
+                            <div className="p-6 border-t border-slate-200 flex gap-3 justify-end">
+                                <button
+                                    onClick={() => setShowCustomReportModal(false)}
+                                    className="px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleGenerateCustomReport}
+                                    className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark font-medium flex items-center gap-2"
+                                >
+                                    <FileText size={20} />
+                                    Generate Report
+                                </button>
                             </div>
                         </div>
-
-                        <div className="p-6 border-t border-slate-200 flex gap-3 justify-end">
-                            <button
-                                onClick={() => setShowCustomReportModal(false)}
-                                className="px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleGenerateCustomReport}
-                                className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark font-medium flex items-center gap-2"
-                            >
-                                <FileText size={20} />
-                                Generate Report
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                    </div>,
+                    document.body
+                )
+            }
 
             {/* Schedule Report Modal */}
-            {showScheduleModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full">
-                        <div className="p-6 border-b border-slate-200 flex justify-between items-center">
-                            <h2 className="text-2xl font-bold text-slate-800">Schedule Report</h2>
-                            <button
-                                onClick={() => setShowScheduleModal(false)}
-                                className="p-2 hover:bg-slate-100 rounded-lg"
-                            >
-                                <X size={24} />
-                            </button>
-                        </div>
-
-                        <div className="p-6 space-y-4">
-                            <div>
-                                <label className="text-sm font-medium text-slate-700 mb-2 block">Select Report</label>
-                                <select
-                                    value={scheduleConfig.reportId}
-                                    onChange={(e) => setScheduleConfig({ ...scheduleConfig, reportId: e.target.value })}
-                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+            {
+                showScheduleModal && createPortal(
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full animate-fade-in">
+                            <div className="p-6 border-b border-slate-200 flex justify-between items-center">
+                                <h2 className="text-2xl font-bold text-slate-800">Schedule Report</h2>
+                                <button
+                                    onClick={() => setShowScheduleModal(false)}
+                                    className="p-2 hover:bg-slate-100 rounded-lg"
                                 >
-                                    <option value="">Choose a report</option>
-                                    {reports.map(report => (
-                                        <option key={report.id} value={report.id}>{report.title}</option>
-                                    ))}
-                                </select>
+                                    <X size={24} />
+                                </button>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="p-6 space-y-4">
                                 <div>
-                                    <label className="text-sm font-medium text-slate-700 mb-2 block">Frequency</label>
+                                    <label className="text-sm font-medium text-slate-700 mb-2 block">Select Report</label>
                                     <select
-                                        value={scheduleConfig.frequency}
-                                        onChange={(e) => setScheduleConfig({ ...scheduleConfig, frequency: e.target.value })}
+                                        value={scheduleConfig.reportId}
+                                        onChange={(e) => setScheduleConfig({ ...scheduleConfig, reportId: e.target.value })}
                                         className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
                                     >
-                                        <option value="daily">Daily</option>
-                                        <option value="weekly">Weekly</option>
-                                        <option value="monthly">Monthly</option>
+                                        <option value="">Choose a report</option>
+                                        {reports.map(report => (
+                                            <option key={report.id} value={report.id}>{report.title}</option>
+                                        ))}
                                     </select>
                                 </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-sm font-medium text-slate-700 mb-2 block">Frequency</label>
+                                        <select
+                                            value={scheduleConfig.frequency}
+                                            onChange={(e) => setScheduleConfig({ ...scheduleConfig, frequency: e.target.value })}
+                                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+                                        >
+                                            <option value="daily">Daily</option>
+                                            <option value="weekly">Weekly</option>
+                                            <option value="monthly">Monthly</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-slate-700 mb-2 block">Time</label>
+                                        <input
+                                            type="time"
+                                            value={scheduleConfig.time}
+                                            onChange={(e) => setScheduleConfig({ ...scheduleConfig, time: e.target.value })}
+                                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+                                        />
+                                    </div>
+                                </div>
+
                                 <div>
-                                    <label className="text-sm font-medium text-slate-700 mb-2 block">Time</label>
+                                    <label className="text-sm font-medium text-slate-700 mb-2 block">Email Recipients (comma-separated)</label>
                                     <input
-                                        type="time"
-                                        value={scheduleConfig.time}
-                                        onChange={(e) => setScheduleConfig({ ...scheduleConfig, time: e.target.value })}
+                                        type="text"
+                                        value={scheduleConfig.recipients}
+                                        onChange={(e) => setScheduleConfig({ ...scheduleConfig, recipients: e.target.value })}
+                                        placeholder="email1@hospital.com, email2@hospital.com"
                                         className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
                                     />
                                 </div>
+
+                                <div>
+                                    <label className="text-sm font-medium text-slate-700 mb-2 block">Format</label>
+                                    <div className="flex gap-4">
+                                        {['pdf', 'csv', 'excel'].map((fmt) => (
+                                            <label key={fmt} className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name="format"
+                                                    value={fmt}
+                                                    checked={scheduleConfig.format === fmt}
+                                                    onChange={(e) => setScheduleConfig({ ...scheduleConfig, format: e.target.value })}
+                                                    className="w-4 h-4 text-primary"
+                                                />
+                                                <span className="text-sm text-slate-700 uppercase">{fmt}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
 
-                            <div>
-                                <label className="text-sm font-medium text-slate-700 mb-2 block">Email Recipients (comma-separated)</label>
-                                <input
-                                    type="text"
-                                    value={scheduleConfig.recipients}
-                                    onChange={(e) => setScheduleConfig({ ...scheduleConfig, recipients: e.target.value })}
-                                    placeholder="email1@hospital.com, email2@hospital.com"
-                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="text-sm font-medium text-slate-700 mb-2 block">Export Format</label>
-                                <select
-                                    value={scheduleConfig.format}
-                                    onChange={(e) => setScheduleConfig({ ...scheduleConfig, format: e.target.value })}
-                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+                            <div className="p-6 border-t border-slate-200 flex gap-3 justify-end">
+                                <button
+                                    onClick={() => setShowScheduleModal(false)}
+                                    className="px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50"
                                 >
-                                    <option value="pdf">PDF</option>
-                                    <option value="csv">CSV</option>
-                                    <option value="json">JSON</option>
-                                </select>
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleScheduleReport}
+                                    className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark font-medium flex items-center gap-2"
+                                >
+                                    <Clock size={16} />
+                                    Schedule
+                                </button>
                             </div>
                         </div>
-
-                        <div className="p-6 border-t border-slate-200 flex gap-3 justify-end">
-                            <button
-                                onClick={() => setShowScheduleModal(false)}
-                                className="px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleScheduleReport}
-                                className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark font-medium flex items-center gap-2"
-                            >
-                                <Clock size={20} />
-                                Schedule Report
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
+                    </div>,
+                    document.body
+                )
+            }
+        </div >
     );
 };
 

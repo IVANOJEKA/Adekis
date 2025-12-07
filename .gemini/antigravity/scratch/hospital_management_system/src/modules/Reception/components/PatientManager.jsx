@@ -31,7 +31,7 @@ const PatientManager = () => {
         cardNumber: ''
     });
 
-    const patients = allPatients
+    const patients = (allPatients || [])
         .filter(p => !p.id.startsWith('W-'))
         .filter(p => {
             if (!searchTerm) return true;
@@ -44,7 +44,7 @@ const PatientManager = () => {
         });
 
     const getPatientCases = (patientId) => {
-        return cases.filter(c => c.patientId === patientId)
+        return (cases || []).filter(c => c.patientId === patientId)
             .sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
     };
 
@@ -53,7 +53,7 @@ const PatientManager = () => {
 
         // Validate wallet if needed
         if (paymentMethod === 'HMS Wallet') {
-            const consultationFee = systemSettings.consultationFees[patientCategory];
+            const consultationFee = systemSettings?.consultationFees?.[patientCategory] || 0;
             if (walletBalance < consultationFee) {
                 alert('Insufficient wallet balance');
                 return;

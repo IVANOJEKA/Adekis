@@ -8,10 +8,10 @@ import {
 
 const TheatreDashboard = () => {
     const {
-        operatingRooms,
-        surgeries: surgerySchedules, // Alias to match existing code
-        surgicalChecklists,
-        surgicalEquipment,
+        operatingRooms = [],
+        surgeries: surgerySchedules = [], // Alias to match existing code
+        surgicalChecklists = [],
+        surgicalEquipment = [],
         scheduleSurgery,
         updateSurgeryStatus
     } = useData();
