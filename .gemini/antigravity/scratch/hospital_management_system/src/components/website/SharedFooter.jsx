@@ -14,14 +14,34 @@ const SharedFooter = () => {
         setEmail('');
     };
 
+    // Secret Staff Login Access
+    const [secretClicks, setSecretClicks] = useState(0);
+
+    const handleSecretAccess = () => {
+        const newCount = secretClicks + 1;
+        setSecretClicks(newCount);
+
+        if (newCount === 3) {
+            navigate('/staff-login');
+            setSecretClicks(0);
+        }
+
+        // Reset if no subsequent click within 1 second
+        setTimeout(() => setSecretClicks(0), 1000);
+    };
+
     return (
         <footer className="bg-white border-t border-slate-100 pt-20 pb-10">
             <div className="container mx-auto px-4">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
                     {/* Brand */}
                     <div className="col-span-1 md:col-span-1">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl flex items-center justify-center shadow-lg">
+                        <div
+                            className="flex items-center gap-3 mb-6 cursor-pointer select-none"
+                            onClick={handleSecretAccess}
+                            title="Adekis Hospital System"
+                        >
+                            <div className="w-10 h-10 bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl flex items-center justify-center shadow-lg transition-transform active:scale-95">
                                 <Activity className="text-white" size={20} />
                             </div>
                             <span className="text-xl font-bold text-slate-900 tracking-tight">{branding.name}</span>
@@ -43,10 +63,9 @@ const SharedFooter = () => {
                         <h4 className="font-bold text-slate-900 mb-6">Quick Links</h4>
                         <ul className="space-y-4 text-sm text-slate-500">
                             <li><button onClick={() => navigate('/')} className="hover:text-emerald-600 transition-colors">Home</button></li>
-                            <li><a href="/#services" className="hover:text-emerald-600 transition-colors">Our Specialties</a></li>
+                            <li><button onClick={() => navigate('/services')} className="hover:text-emerald-600 transition-colors">Our Services</button></li>
                             <li><button onClick={() => navigate('/health-camps')} className="hover:text-emerald-600 transition-colors">Health Camps</button></li>
                             <li><button onClick={() => navigate('/shand-wallet')} className="hover:text-emerald-600 transition-colors">Shand Wallet</button></li>
-                            <li><button onClick={() => navigate('/staff-login')} className="hover:text-emerald-600 transition-colors">Staff Login</button></li>
                         </ul>
                     </div>
 

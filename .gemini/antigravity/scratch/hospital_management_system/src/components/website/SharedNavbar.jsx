@@ -20,7 +20,7 @@ const SharedNavbar = () => {
     }, []);
 
     const navLinks = [
-        { name: 'Specialties', path: '/#services', type: 'anchor' },
+        { name: 'Services', path: '/services', type: 'route' },
         { name: 'Health Camps', path: '/health-camps', type: 'route' },
         { name: 'Shand Wallet', path: '/shand-wallet', type: 'route' },
     ];
@@ -69,8 +69,8 @@ const SharedNavbar = () => {
                                 key={link.name}
                                 onClick={() => handleNavigate(link)}
                                 className={`text-sm font-bold transition-colors ${isScrolled
-                                        ? 'text-slate-600 hover:text-emerald-600'
-                                        : 'text-emerald-50 hover:text-white shadow-black/5'
+                                    ? 'text-slate-600 hover:text-emerald-600'
+                                    : 'text-emerald-50 hover:text-white shadow-black/5'
                                     }`}
                             >
                                 {link.name}

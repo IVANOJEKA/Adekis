@@ -7,18 +7,28 @@ const WebsiteSettings = () => {
 
     // Initialize state with existing config or defaults (safe access)
     // We update this whenever generic website settings change
-    const [config, setConfig] = useState(branding.websiteConfig || {
-        showTopBar: true,
-        heroTitle: '',
-        heroSubtitle: '',
-        heroImage: '',
-        showStats: true,
-        emergencyPhone: '',
-        welcomeMessage: '',
-        services: [],
-        promotions: [],
-        healthCamps: [],
-        walletPackages: []
+    // Initialize state with existing config or defaults (safe access)
+    // We update this whenever generic website settings change
+    const [config, setConfig] = useState({
+        // Root branding props
+        name: branding.name || 'Adekis Hospital',
+        address: branding.address || '',
+        phone: branding.phone || '',
+        email: branding.email || '',
+        // Website Config props
+        ...(branding.websiteConfig || {
+            showTopBar: true,
+            heroTitle: '',
+            heroSubtitle: '',
+            heroImage: '',
+            showStats: true,
+            emergencyPhone: '',
+            welcomeMessage: '',
+            services: [],
+            promotions: [],
+            healthCamps: [],
+            walletPackages: []
+        })
     });
 
     const [activeSection, setActiveSection] = useState('general');
@@ -130,7 +140,17 @@ const WebsiteSettings = () => {
     };
 
     const handleSave = () => {
-        updateBranding({ ...branding, websiteConfig: config });
+        // Separate root branding props from websiteConfig
+        const { name, address, phone, email, ...websiteConfig } = config;
+
+        updateBranding({
+            ...branding,
+            name,
+            address,
+            phone,
+            email,
+            websiteConfig
+        });
         alert('Website content updated successfully!');
     };
 
@@ -157,8 +177,8 @@ const WebsiteSettings = () => {
                         key={section}
                         onClick={() => setActiveSection(section)}
                         className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors capitalize ${activeSection === section
-                                ? 'bg-slate-100 text-emerald-600 border-b-2 border-emerald-500'
-                                : 'text-slate-500 hover:text-slate-800'
+                            ? 'bg-slate-100 text-emerald-600 border-b-2 border-emerald-500'
+                            : 'text-slate-500 hover:text-slate-800'
                             }`}
                     >
                         {section}
@@ -171,9 +191,29 @@ const WebsiteSettings = () => {
                 <div className="space-y-6 animate-fade-in">
                     <div className="bg-white border border-slate-200 rounded-xl p-6">
                         <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                            <Layout size={20} className="text-blue-500" /> Hero & Basics
+                            <Layout size={20} className="text-blue-500" /> General & Contact Info
                         </h3>
                         <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Hospital Name</label>
+                                    <input type="text" name="name" value={config.name} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+                                    <input type="email" name="email" value={config.email} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
+                                    <input type="text" name="phone" value={config.phone} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>
+                                    <input type="text" name="address" value={config.address} onChange={handleChange} className="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none focus:border-blue-500" />
+                                </div>
+                            </div>
+                            <div className="border-t border-slate-100 my-4"></div>
+                            <h4 className="font-bold text-slate-800 mb-2">Hero Section</h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-1">Hero Title</label>
