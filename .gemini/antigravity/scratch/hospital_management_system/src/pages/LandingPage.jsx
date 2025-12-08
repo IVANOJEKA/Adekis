@@ -3,11 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import {
     Activity,
-    Phone,
-    MapPin,
-    Menu,
-    X,
-    FileText,
     CreditCard,
     ChevronRight,
     Star,
@@ -19,15 +14,17 @@ import {
     User,
     Ambulance,
     ArrowRight,
-    Check
+    Check,
+    MapPin
 } from 'lucide-react';
 import { useBranding } from '../context/BrandingContext';
+import SharedNavbar from '../components/website/SharedNavbar';
+import SharedFooter from '../components/website/SharedFooter';
 
 // Icon mapping
 const iconMap = {
     Activity: <Activity size={32} className="text-emerald-500" />,
     Heart: <Heart size={32} className="text-rose-500" />,
-    Phone: <Phone size={32} className="text-blue-500" />,
     Shield: <Shield size={32} className="text-amber-500" />,
     User: <User size={32} className="text-gray-500" />,
     Stethoscope: <Stethoscope size={32} className="text-blue-500" />,
@@ -39,7 +36,6 @@ const iconMap = {
 const LandingPage = () => {
     const navigate = useNavigate();
     const { branding } = useBranding();
-    const [isMenuOpen, setIsMenuOpen] = React.useState(false);
     const { scrollY } = useScroll();
     const y1 = useTransform(scrollY, [0, 500], [0, 200]);
     const opacity = useTransform(scrollY, [0, 300], [1, 0]);
@@ -64,61 +60,7 @@ const LandingPage = () => {
     return (
         <div className="min-h-screen bg-white font-sans overflow-x-hidden selection:bg-emerald-500 selection:text-white">
 
-            {/* --- NAVIGATION --- */}
-            <nav className="fixed w-full z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 transition-all duration-300">
-                <div className="container mx-auto px-4">
-                    <div className="flex justify-between items-center h-20">
-                        {/* Logo */}
-                        <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-                            {branding.logo ? (
-                                <img src={branding.logo} alt="Logo" className="h-10" />
-                            ) : (
-                                <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                                    <Activity className="text-white" size={24} />
-                                </div>
-                            )}
-                            <div>
-                                <h1 className="text-xl font-bold text-slate-900 tracking-tight">{branding.name}</h1>
-                                <p className="text-[10px] text-slate-500 font-bold tracking-widest uppercase">Excellence in Care</p>
-                            </div>
-                        </div>
-
-                        {/* Desktop Links */}
-                        <div className="hidden md:flex items-center gap-8">
-                            <a href="#services" className="text-sm font-semibold text-slate-600 hover:text-emerald-600 transition-colors">Specialties</a>
-                            <button onClick={() => navigate('/health-camps')} className="text-sm font-semibold text-slate-600 hover:text-emerald-600 transition-colors">Health Camps</button>
-                            <button onClick={() => navigate('/shand-wallet')} className="text-sm font-semibold text-slate-600 hover:text-emerald-600 transition-colors">Shand Wallet</button>
-                            <button
-                                onClick={() => navigate('/patient-portal')}
-                                className="px-6 py-2.5 bg-slate-900 text-white font-bold rounded-full hover:bg-emerald-600 transition-all shadow-lg hover:shadow-emerald-500/30 flex items-center gap-2 text-sm"
-                            >
-                                <FileText size={16} /> Patient Portal
-                            </button>
-                        </div>
-
-                        {/* Mobile Toggle */}
-                        <button className="md:hidden p-2 text-slate-800" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-                            {isMenuOpen ? <X /> : <Menu />}
-                        </button>
-                    </div>
-                </div>
-
-                {/* Mobile Menu */}
-                {isMenuOpen && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        className="md:hidden bg-white border-t border-slate-100 px-4 py-4 shadow-xl"
-                    >
-                        <div className="flex flex-col gap-4">
-                            <a href="#services" className="font-medium text-slate-600" onClick={() => setIsMenuOpen(false)}>Services</a>
-                            <button onClick={() => { navigate('/health-camps'); setIsMenuOpen(false) }} className="text-left font-medium text-slate-600">Health Camps</button>
-                            <button onClick={() => { navigate('/shand-wallet'); setIsMenuOpen(false) }} className="text-left font-medium text-slate-600">Shand Wallet</button>
-                            <button onClick={() => { navigate('/patient-portal'); setIsMenuOpen(false) }} className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold">Patient Portal</button>
-                        </div>
-                    </motion.div>
-                )}
-            </nav>
+            <SharedNavbar />
 
             {/* --- HERO SECTION (Cinematic) --- */}
             <header className="relative h-screen flex items-center overflow-hidden bg-slate-900">
@@ -356,40 +298,7 @@ const LandingPage = () => {
                 </div>
             </section>
 
-            {/* --- FOOTER --- */}
-            <footer className="bg-white border-t border-slate-100 pt-20 pb-10">
-                <div className="container mx-auto px-4">
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-16">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center">
-                                <Activity className="text-white" size={24} />
-                            </div>
-                            <span className="text-2xl font-bold text-slate-900">{branding.name}</span>
-                        </div>
-
-                        <div className="flex gap-6">
-                            <a href="#" className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
-                                <Phone size={18} />
-                            </a>
-                            <a href="#" className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
-                                <MapPin size={18} />
-                            </a>
-                            <a href="#" className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
-                                <CreditCard size={18} />
-                            </a>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-slate-100 text-slate-500 text-sm">
-                        <p>© 2025 {branding.name}. All rights reserved.</p>
-                        <div className="flex gap-6 mt-4 md:mt-0">
-                            <a href="#" className="hover:text-slate-900">Privacy</a>
-                            <a href="#" className="hover:text-slate-900">Terms</a>
-                            <button onClick={() => navigate('/staff-login')} className="hover:text-slate-900">Staff Login</button>
-                        </div>
-                    </div>
-                </div>
-            </footer>
+            <SharedFooter />
         </div>
     );
 };
