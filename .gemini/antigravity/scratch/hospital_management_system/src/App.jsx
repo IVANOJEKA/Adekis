@@ -44,6 +44,7 @@ const PathologyDashboard = React.lazy(() => import('./modules/Pathology/Patholog
 const StaffLogin = React.lazy(() => import('./pages/StaffLogin'));
 const PatientLogin = React.lazy(() => import('./pages/PatientLogin'));
 const PatientPortal = React.lazy(() => import('./pages/PatientPortal'));
+const LandingPage = React.lazy(() => import('./pages/LandingPage'));
 
 // Loading Fallback
 const PageLoader = () => (
@@ -79,13 +80,14 @@ function App() {
                     <Suspense fallback={<Layout><PageLoader /></Layout>}>
                       <Routes>
                         {/* Public Routes (No Auth Required) */}
+                        <Route path="/" element={<LandingPage />} />
                         <Route path="/staff-login" element={<StaffLogin />} />
                         <Route path="/patient-login" element={<PatientLogin />} />
                         <Route path="/patient-portal" element={<PatientPortal />} />
 
+
                         {/* Protected Staff Routes (With Layout & Auth) */}
-                        <Route path="/" element={<Layout />}>
-                          <Route index element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                        <Route element={<Layout />}>
                           <Route path="dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                           <Route path="reception" element={<ProtectedRoute requiredPermission="reception"><ReceptionDashboard /></ProtectedRoute>} />
                           <Route path="doctor" element={<ProtectedRoute requiredPermission="doctor"><DoctorDashboard /></ProtectedRoute>} />
