@@ -24,7 +24,7 @@ export const BrandingProvider = ({ children }) => {
         email: 'info@adekis.com',
         phone: '+256 700 000 000',
         address: 'Kampala, Uganda',
-        footerText: '© 2024 Adekis Hospital Management System',
+        footerText: '© 2024 Adekis+ | Powered by Adekis Technology',
         reportHeaderImage: null,
         reportFooterImage: null
     };

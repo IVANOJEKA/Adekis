@@ -123,7 +123,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
             </div>
             <div className="overflow-hidden">
               <p className="text-sm font-bold text-slate-700 truncate">Powered by Adekis +</p>
-              <p className="text-xs text-slate-500 truncate">Hospital Management System</p>
+              <p className="text-xs text-slate-500 truncate">Adekis+</p>
             </div>
           </div>
         </div>
