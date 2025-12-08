@@ -134,14 +134,49 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const logout = () => {
-        const { authAPI } = require('../services/api');
-        authAPI.logout();
+    const logout = async () => {
+        try {
+            const { authAPI } = await import('../services/api');
+            await authAPI.logout();
+        } catch (e) {
+            console.error('Logout error:', e);
+        }
 
         setCurrentUser(null);
         setIsAuthenticated(false);
         localStorage.removeItem('hms_auth_user');
         localStorage.removeItem('hms_auth_time');
+        localStorage.removeItem('hms_auth_token');
+    };
+
+    const register = async (userData) => {
+        try {
+            const { authAPI } = await import('../services/api');
+            const response = await authAPI.register(userData);
+
+            const userSession = {
+                id: response.user.uid,
+                name: userData.name,
+                email: response.user.email,
+                role: userData.role,
+                department: userData.department,
+                hospitalId: 'H-001', // Default
+                permissions: ROLE_PERMISSIONS[userData.role] || []
+            };
+
+            setCurrentUser(userSession);
+            setIsAuthenticated(true);
+            localStorage.setItem('hms_auth_user', JSON.stringify(userSession));
+            localStorage.setItem('hms_auth_time', new Date().getTime().toString());
+
+            return { success: true, user: userSession };
+        } catch (error) {
+            console.error('Registration error:', error);
+            return {
+                success: false,
+                error: error.message || 'Registration failed.'
+            };
+        }
     };
 
     const hasPermission = (moduleOrPath) => {
@@ -171,6 +206,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated,
         loading,
         login,
+        register,
         logout,
         hasPermission,
         hasRole,

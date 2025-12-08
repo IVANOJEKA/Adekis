@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogIn, Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { LogIn, Mail, Lock, AlertCircle, Eye, EyeOff, UserPlus, User as UserIcon, Shield } from 'lucide-react';
 
 const StaffLogin = () => {
     const navigate = useNavigate();
-    const { login } = useAuth();
+    const { login, register } = useAuth();
+    const [isRegistering, setIsRegistering] = useState(false);
 
     const [formData, setFormData] = useState({
         email: '',
-        password: ''
+        password: '',
+        name: '',
+        role: 'Administrator'
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -35,8 +38,24 @@ const StaffLogin = () => {
             return;
         }
 
-        // Attempt login (now async with backend)
-        const result = await login(formData.email, formData.password);
+        // Attempt login or register
+        let result;
+        if (isRegistering) {
+            if (!formData.name) {
+                setError('Please enter full name');
+                setLoading(false);
+                return;
+            }
+            result = await register({
+                email: formData.email,
+                password: formData.password,
+                name: formData.name,
+                role: formData.role,
+                department: 'Administration' // Default
+            });
+        } else {
+            result = await login(formData.email, formData.password);
+        }
 
         if (result.success) {
             // Redirect based on role
@@ -90,7 +109,45 @@ const StaffLogin = () => {
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit} className="space-y-5">
+
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        {/* REGISTER: Name Field */}
+                        <div className={`${isRegistering ? 'block' : 'hidden'}`}>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Full Name</label>
+                            <div className="relative">
+                                <UserIcon size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    type="text"
+                                    name="name"
+                                    value={formData.name}
+                                    onChange={handleChange}
+                                    placeholder="John Doe"
+                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        {/* REGISTER: Role Field */}
+                        <div className={`${isRegistering ? 'block' : 'hidden'}`}>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Role</label>
+                            <div className="relative">
+                                <Shield size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <select
+                                    name="role"
+                                    value={formData.role}
+                                    onChange={handleChange}
+                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none"
+                                >
+                                    <option value="Administrator">Administrator</option>
+                                    <option value="Doctor">Doctor</option>
+                                    <option value="Nurse">Nurse</option>
+                                    <option value="Pharmacist">Pharmacist</option>
+                                    <option value="Receptionist">Receptionist</option>
+                                    <option value="Lab Technician">Lab Technician</option>
+                                </select>
+                            </div>
+                        </div>
+
                         {/* Email Field */}
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -122,7 +179,7 @@ const StaffLogin = () => {
                                     name="password"
                                     value={formData.password}
                                     onChange={handleChange}
-                                    placeholder="Enter your password"
+                                    placeholder={isRegistering ? "Create a strong password" : "Enter your password"}
                                     className="w-full pl-10 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                                     required
                                 />
@@ -145,15 +202,26 @@ const StaffLogin = () => {
                             {loading ? (
                                 <>
                                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    <span>Signing in...</span>
+                                    <span>{isRegistering ? 'Creating Account...' : 'Signing in...'}</span>
                                 </>
                             ) : (
                                 <>
-                                    <LogIn size={20} />
-                                    <span>Sign In</span>
+                                    {isRegistering ? <UserPlus size={20} /> : <LogIn size={20} />}
+                                    <span>{isRegistering ? 'Create Account' : 'Sign In'}</span>
                                 </>
                             )}
                         </button>
+
+                        {/* Toggle Mode */}
+                        <div className="text-center pt-2">
+                            <button
+                                type="button"
+                                onClick={() => setIsRegistering(!isRegistering)}
+                                className="text-sm text-primary hover:text-primary-dark hover:underline"
+                            >
+                                {isRegistering ? 'Already have an account? Sign In' : 'New to Adekis+? Create Account here'}
+                            </button>
+                        </div>
                     </form>
 
                     {/* Demo Credentials */}

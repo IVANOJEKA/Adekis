@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
 import { useBranding } from '../../context/BrandingContext';
+import { migrateAllData } from '../../utils/migrateData';
 import {
     Settings, Users, Shield, DollarSign, Bell, Database, Globe, Palette, Lock, Save, Upload, Download, Key, UserPlus, Edit, Trash2, CheckCircle, X, AlertCircle, Check,
     Wifi, Server, RefreshCw, Loader2, Fingerprint, Smartphone, User
@@ -266,7 +267,7 @@ const SettingsDashboard = () => {
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
                 {/* Tabs */}
                 <div className="flex items-center gap-1 p-2 border-b border-slate-100 bg-slate-50/50 overflow-x-auto">
-                    {['General', 'Website', 'Users', 'Roles & Permissions', 'Modules', 'Biometric Devices', 'Printer', 'Billing', 'Notifications', 'Appearance', 'System'].map((tab) => {
+                    {['General', 'Website', 'Users', 'Roles & Permissions', 'Modules', 'Biometric Devices', 'Printer', 'Billing', 'Notifications', 'Appearance', 'System', 'Data Migration'].map((tab) => {
                         const tabKey = tab.toLowerCase().replace(/ & /g, '-').replace(/ /g, '-');
                         const isActive = activeTab === tabKey;
                         return (
@@ -286,6 +287,35 @@ const SettingsDashboard = () => {
 
                 {/* Tab Content */}
                 <div className="p-6">
+
+                    {/* Data Migration Tab */}
+                    {activeTab === 'data-migration' && (
+                        <div className="space-y-6">
+                            <h2 className="text-lg font-bold text-slate-800 mb-4">Data Migration to Firebase</h2>
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                                <h3 className="font-bold text-blue-900 mb-2">Initialize Cloud Database</h3>
+                                <p className="text-blue-700 text-sm mb-6">
+                                    This will upload the initial seed data (patients, services, inventory) to your connected Firebase Firestore database.
+                                    Existing data in Firestore with same IDs will be overwritten.
+                                </p>
+                                <button
+                                    onClick={async () => {
+                                        if (window.confirm('Are you sure you want to migrate data? This may overwrite existing records.')) {
+                                            showToast('Starting migration...');
+                                            const result = await migrateAllData();
+                                            if (result && result.success) showToast(result.message);
+                                            else showToast('Migration Failed: ' + (result?.error || 'Unknown error'));
+                                        }
+                                    }}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
+                                >
+                                    <Database size={20} />
+                                    Start Data Migration
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {/* General Tab (Branding) */}
                     {activeTab === 'general' && (
                         <BrandingSettings />

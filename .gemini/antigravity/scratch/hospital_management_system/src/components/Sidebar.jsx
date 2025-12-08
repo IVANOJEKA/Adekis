@@ -115,6 +115,17 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
           ))}
         </div>
 
+        {/* Logout Button */}
+        <div className="px-3 pb-2 pt-2 border-t border-slate-100">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition-all duration-200 font-medium"
+          >
+            <LogOut size={20} />
+            <span>Sign Out</span>
+          </button>
+        </div>
+
         {/* Footer */}
         <div className="p-4 border-t border-slate-100">
           <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-50 border border-slate-100">

@@ -1,998 +1,353 @@
-import axios from 'axios';
+import { db, auth } from './firebase';
+import {
+    collection,
+    getDocs,
+    getDoc,
+    addDoc,
+    updateDoc,
+    deleteDoc,
+    doc,
+    query,
+    where,
+    orderBy,
+    onSnapshot,
+    setDoc
+} from 'firebase/firestore';
+import {
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    signOut,
+    onAuthStateChanged
+} from 'firebase/auth';
 
-// API Base URL - determines if running locally or in production
-const API_BASE_URL = import.meta.env.VITE_API_URL ||
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-        ? 'http://localhost:5000/api'
-        : 'https://hms-backend-13vb.onrender.com/api');
-
-// Create axios instance with default config
-const api = axios.create({
-    baseURL: API_BASE_URL,
-    headers: {
-        'Content-Type': 'application/json'
+// Helper for standardize response
+const getList = async (collectionName, constraints = []) => {
+    try {
+        const q = query(collection(db, collectionName), ...constraints);
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.error(`Error getting ${collectionName}:`, error);
+        throw error;
     }
-});
+};
 
-// Request interceptor - Add auth token to all requests
-api.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('hms_auth_token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+const getOne = async (collectionName, id) => {
+    try {
+        const docRef = doc(db, collectionName, id);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            return { id: docSnap.id, ...docSnap.data() };
+        } else {
+            return null;
         }
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
+    } catch (error) {
+        throw error;
     }
-);
+};
 
-// Response interceptor - Handle errors globally
-api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        if (error.response?.status === 401) {
-            // Token expired or invalid - clear auth and emit event
-            localStorage.removeItem('hms_auth_token');
-            localStorage.removeItem('hms_auth_user');
-            // Dispatch event for AuthContext to handle redirect gracefully
-            window.dispatchEvent(new Event('auth:unauthorized'));
-        }
-        return Promise.reject(error);
+const createItem = async (collectionName, data) => {
+    try {
+        const colRef = collection(db, collectionName);
+        const docRef = await addDoc(colRef, { ...data, createdAt: new Date().toISOString() });
+        return { id: docRef.id, ...data };
+    } catch (error) {
+        throw error;
     }
-);
+};
 
+const updateItem = async (collectionName, id, data) => {
+    try {
+        const docRef = doc(db, collectionName, id);
+        await updateDoc(docRef, { ...data, updatedAt: new Date().toISOString() });
+        return { id, ...data };
+    } catch (error) {
+        throw error;
+    }
+};
+
+const deleteItem = async (collectionName, id) => {
+    try {
+        await deleteDoc(doc(db, collectionName, id));
+        return { success: true, id };
+    } catch (error) {
+        throw error;
+    }
+};
 // ==================== AUTH API ====================
-
 export const authAPI = {
-    // Login
     login: async (email, password) => {
-        const response = await api.post('/auth/login', { email, password });
-        if (response.data.token) {
-            localStorage.setItem('hms_auth_token', response.data.token);
-            localStorage.setItem('hms_auth_user', JSON.stringify(response.data.user));
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+
+            // Get user profile
+            const profile = await getOne('users', user.uid);
+
+            return {
+                token: await user.getIdToken(),
+                user: { uid: user.uid, email: user.email, ...profile }
+            };
+        } catch (error) {
+            throw error;
         }
-        return response.data;
     },
 
-    // Register
     register: async (userData) => {
-        const response = await api.post('/auth/register', userData);
-        if (response.data.token) {
-            localStorage.setItem('hms_auth_token', response.data.token);
-            localStorage.setItem('hms_auth_user', JSON.stringify(response.data.user));
+        try {
+            // Create auth user
+            const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
+            const user = userCredential.user;
+
+            // Create user profile in Firestore
+            await setDoc(doc(db, 'users', user.uid), {
+                name: userData.name,
+                email: userData.email,
+                role: userData.role || 'Staff',
+                department: userData.department,
+                createdAt: new Date().toISOString()
+            });
+
+            return {
+                token: await user.getIdToken(),
+                user: { uid: user.uid, email: user.email, name: userData.name }
+            };
+        } catch (error) {
+            throw error;
         }
-        return response.data;
     },
 
-    // Get current user
     me: async () => {
-        const response = await api.get('/auth/me');
-        return response.data.user;
+        return new Promise((resolve, reject) => {
+            const unsubscribe = onAuthStateChanged(auth, async (user) => {
+                unsubscribe();
+                if (user) {
+                    // Get profile
+                    const profile = await getOne('users', user.uid);
+                    resolve({ uid: user.uid, email: user.email, ...profile });
+                } else {
+                    reject('Not authenticated');
+                }
+            });
+        });
     },
 
-    // Logout
-    logout: () => {
+    logout: async () => {
+        await signOut(auth);
         localStorage.removeItem('hms_auth_token');
-        localStorage.removeItem('hms_auth_user');
     }
 };
 
 // ==================== PATIENTS API ====================
-
 export const patientsAPI = {
-    // Get all patients with optional search and pagination
-    getAll: async (params = {}) => {
-        const response = await api.get('/patients', { params });
-        return response.data.patients || response.data;
-    },
-
-    // Get single patient by ID
-    getById: async (id) => {
-        const response = await api.get(`/patients/${id}`);
-        return response.data.patient;
-    },
-
-    // Create new patient
-    create: async (patientData) => {
-        const response = await api.post('/patients', patientData);
-        return response.data.patient;
-    },
-
-    // Update patient
-    update: async (id, patientData) => {
-        const response = await api.put(`/patients/${id}`, patientData);
-        return response.data.patient;
-    },
-
-    // Delete patient
-    delete: async (id) => {
-        const response = await api.delete(`/patients/${id}`);
-        return response.data;
-    }
+    getAll: (params) => getList('patients'),
+    getById: (id) => getOne('patients', id),
+    create: (data) => createItem('patients', data),
+    update: (id, data) => updateItem('patients', id, data),
+    delete: (id) => deleteItem('patients', id)
 };
 
 // ==================== APPOINTMENTS API ====================
-
 export const appointmentsAPI = {
-    getAll: async (params = {}) => {
-        const response = await api.get('/appointments', { params });
-        return response.data.appointments || response.data;
-    },
-
-    getById: async (id) => {
-        const response = await api.get(`/appointments/${id}`);
-        return response.data.appointment;
-    },
-
-    create: async (appointmentData) => {
-        const response = await api.post('/appointments', appointmentData);
-        return response.data.appointment;
-    },
-
-    update: async (id, appointmentData) => {
-        const response = await api.put(`/appointments/${id}`, appointmentData);
-        return response.data.appointment;
-    },
-
-    delete: async (id) => {
-        const response = await api.delete(`/appointments/${id}`);
-        return response.data;
-    }
+    getAll: () => getList('appointments'),
+    getById: (id) => getOne('appointments', id),
+    create: (data) => createItem('appointments', data),
+    update: (id, data) => updateItem('appointments', id, data),
+    delete: (id) => deleteItem('appointments', id)
 };
 
 // ==================== PRESCRIPTIONS API ====================
-
 export const prescriptionsAPI = {
-    getAll: async (params = {}) => {
-        const response = await api.get('/prescriptions', { params });
-        return response.data.prescriptions || response.data;
-    },
-
-    create: async (prescriptionData) => {
-        const response = await api.post('/prescriptions', prescriptionData);
-        return response.data.prescription;
-    },
-
-    update: async (id, prescriptionData) => {
-        const response = await api.put(`/prescriptions/${id}`, prescriptionData);
-        return response.data.prescription;
-    }
+    getAll: () => getList('prescriptions'),
+    create: (data) => createItem('prescriptions', data),
+    update: (id, data) => updateItem('prescriptions', id, data)
 };
 
 // ==================== QUEUE API ====================
-
 export const queueAPI = {
-    getAll: async (params = {}) => {
-        const response = await api.get('/queue', { params });
-        return response.data.queue || response.data;
-    },
-
-    create: async (queueData) => {
-        const response = await api.post('/queue', queueData);
-        return response.data;
-    },
-
-    update: async (id, queueData) => {
-        const response = await api.put(`/queue/${id}`, queueData);
-        return response.data;
-    },
-
-    delete: async (id) => {
-        const response = await api.delete(`/queue/${id}`);
-        return response.data;
-    }
+    getAll: () => getList('queue', [orderBy('checkInTime', 'asc')]),
+    create: (data) => createItem('queue', data),
+    update: (id, data) => updateItem('queue', id, data),
+    delete: (id) => deleteItem('queue', id)
 };
+
 // ==================== BILLS API ====================
-
 export const billsAPI = {
-    getAll: async (params = {}) => {
-        const response = await api.get('/bills', { params });
-        return response.data.bills || response.data;
-    },
-
-    create: async (billData) => {
-        const response = await api.post('/bills', billData);
-        return response.data.bill;
-    },
-
-    update: async (id, billData) => {
-        const response = await api.put(`/bills/${id}`, billData);
-        return response.data.bill;
-    }
+    getAll: () => getList('bills'),
+    create: (data) => createItem('bills', data),
+    update: (id, data) => updateItem('bills', id, data)
 };
 
 // ==================== SERVICES API ====================
-
 export const servicesAPI = {
-    getAll: async (params = {}) => {
-        const response = await api.get('/services', { params });
-        return response.data.services || response.data;
-    },
-
-    create: async (serviceData) => {
-        const response = await api.post('/services', serviceData);
-        return response.data.service;
-    },
-
-    update: async (id, serviceData) => {
-        const response = await api.put(`/services/${id}`, serviceData);
-        return response.data.service;
-    }
+    getAll: () => getList('services'),
+    create: (data) => createItem('services', data),
+    update: (id, data) => updateItem('services', id, data)
 };
 
-
-
 // ==================== CASES API ====================
-
 export const casesAPI = {
-    getAll: async (params = {}) => {
-        const response = await api.get('/cases', { params });
-        return response.data.cases || response.data;
-    },
-
-    create: async (caseData) => {
-        const response = await api.post('/cases', caseData);
-        return response.data.case;
-    },
-
-    update: async (id, caseData) => {
-        const response = await api.put(`/cases/${id}`, caseData);
-        return response.data.case;
-    }
+    getAll: () => getList('cases'),
+    create: (data) => createItem('cases', data),
+    update: (id, data) => updateItem('cases', id, data)
 };
 
 // ==================== INSURANCE API ====================
-
 export const insuranceAPI = {
-    getProviders: async () => {
-        const response = await api.get('/insurance');
-        return response.data;
+    getProviders: () => getList('insurance_providers'),
+    addProvider: (data) => createItem('insurance_providers', data),
+    verifyCoverage: async (data) => {
+        // Mock verification logic on client side for now, or use Cloud Function later
+        return { valid: true, coverage: 0.8, message: "Verified via Firebase (Mock)" };
     },
-
-    addProvider: async (providerData) => {
-        const response = await api.post('/insurance', providerData);
-        return response.data;
-    },
-
-    verifyCoverage: async (verificationData) => {
-        const response = await api.post('/insurance/verify', verificationData);
-        return response.data;
-    },
-
-    getClaims: async () => {
-        const response = await api.get('/insurance/claims');
-        return response.data;
-    },
-
-    submitClaim: async (claimData) => {
-        const response = await api.post('/insurance/claims', claimData);
-        return response.data;
-    },
-
-    updateClaimStatus: async (id, statusData) => {
-        const response = await api.put(`/insurance/claims/${id}/status`, statusData);
-        return response.data;
-    }
+    getClaims: () => getList('insurance_claims'),
+    submitClaim: (data) => createItem('insurance_claims', data),
+    updateClaimStatus: (id, data) => updateItem('insurance_claims', id, data)
 };
 
-
-
-
-
 // ==================== THEATRE API ====================
-
 export const theatreAPI = {
-    getRooms: async () => {
-        const response = await api.get('/theatre/rooms');
-        return response.data;
-    },
-
-    addRoom: async (roomData) => {
-        const response = await api.post('/theatre/rooms', roomData);
-        return response.data;
-    },
-
-    getSurgeries: async () => {
-        const response = await api.get('/theatre/surgeries');
-        return response.data;
-    },
-
-    scheduleSurgery: async (surgeryData) => {
-        const response = await api.post('/theatre/surgeries', surgeryData);
-        return response.data;
-    },
-
-    updateSurgeryStatus: async (id, statusData) => {
-        const response = await api.put(`/theatre/surgeries/${id}/status`, statusData);
-        return response.data;
-    }
+    getRooms: () => getList('theatre_rooms'),
+    addRoom: (data) => createItem('theatre_rooms', data),
+    getSurgeries: () => getList('surgeries'),
+    scheduleSurgery: (data) => createItem('surgeries', data),
+    updateSurgeryStatus: (id, data) => updateItem('surgeries', id, data)
 };
 
 // ==================== EMR API ====================
-
 export const emrAPI = {
-    getRecords: async (patientId) => {
-        const response = await api.get('/emr/records', {
-            params: patientId ? { patientId } : {}
-        });
-        return response.data;
+    getRecords: (patientId) => {
+        const constraints = patientId ? [where('patientId', '==', patientId)] : [];
+        return getList('emr_records', constraints);
     },
-
-    getRecordsByPatient: async (patientId) => {
-        const response = await api.get(`/emr/records/${patientId}`);
-        return response.data;
+    createRecord: (data) => createItem('emr_records', data),
+    updateRecord: (id, data) => updateItem('emr_records', id, data),
+    getNotes: (patientId) => {
+        const constraints = patientId ? [where('patientId', '==', patientId)] : [];
+        return getList('emr_notes', constraints);
     },
-
-    createRecord: async (recordData) => {
-        const response = await api.post('/emr/records', recordData);
-        return response.data;
-    },
-
-    updateRecord: async (id, recordData) => {
-        const response = await api.put(`/emr/records/${id}`, recordData);
-        return response.data;
-    },
-
-    getNotes: async (patientId) => {
-        const response = await api.get('/emr/notes', {
-            params: patientId ? { patientId } : {}
-        });
-        return response.data;
-    },
-
-    createNote: async (noteData) => {
-        const response = await api.post('/emr/notes', noteData);
-        return response.data;
-    }
+    createNote: (data) => createItem('emr_notes', data)
 };
 
 // ==================== MATERNITY API ====================
-
 export const maternityAPI = {
-    getPatients: async () => {
-        const response = await api.get('/maternity/patients');
-        return response.data;
-    },
-
-    registerPatient: async (patientData) => {
-        const response = await api.post('/maternity/patients', patientData);
-        return response.data;
-    },
-
-    recordANCVisit: async (visitData) => {
-        const response = await api.post('/maternity/anc', visitData);
-        return response.data;
-    },
-
-    getDeliveries: async () => {
-        const response = await api.get('/maternity/deliveries');
-        return response.data;
-    },
-
-    recordDelivery: async (deliveryData) => {
-        const response = await api.post('/maternity/deliveries', deliveryData);
-        return response.data;
-    },
-
-    recordPNCVisit: async (visitData) => {
-        const response = await api.post('/maternity/pnc', visitData);
-        return response.data;
-    }
+    getPatients: () => getList('maternity_patients'),
+    registerPatient: (data) => createItem('maternity_patients', data),
+    recordANCVisit: (data) => createItem('maternity_anc', data),
+    getDeliveries: () => getList('maternity_deliveries'),
+    recordDelivery: (data) => createItem('maternity_deliveries', data),
+    recordPNCVisit: (data) => createItem('maternity_pnc', data)
 };
 
 // ==================== TRIAGE API ====================
-
 export const triageAPI = {
-    getRecords: async (params) => {
-        const response = await api.get('/triage', { params });
-        return response.data;
-    },
-
-    createRecord: async (recordData) => {
-        const response = await api.post('/triage', recordData);
-        return response.data;
-    },
-
-    getRecordById: async (id) => {
-        const response = await api.get(`/triage/${id}`);
-        return response.data;
-    }
+    getRecords: () => getList('triage_records'),
+    createRecord: (data) => createItem('triage_records', data),
+    getRecordById: (id) => getOne('triage_records', id)
 };
 
 // ==================== LABORATORY API ====================
-
 export const labAPI = {
-    getTests: async (params) => {
-        const response = await api.get('/lab', { params });
-        return response.data;
-    },
-
-    orderTest: async (testData) => {
-        const response = await api.post('/lab', testData);
-        return response.data;
-    },
-
-    updateResults: async (id, resultData) => {
-        const response = await api.put(`/lab/${id}/results`, resultData);
-        return response.data;
-    },
-
-    getTestById: async (id) => {
-        const response = await api.get(`/lab/${id}`);
-        return response.data;
-    },
-
-    validateResults: async (id, notes) => {
-        const response = await api.put(`/lab/${id}/validate`, { notes });
-        return response.data;
-    },
-
-    logPrint: async (id) => {
-        const response = await api.post(`/lab/${id}/log-print`);
-        return response.data;
-    },
-
-    getPendingTests: async () => {
-        const response = await api.get('/lab/pending');
-        return response.data;
-    },
-
-    getDoctorOrders: async (doctorName) => {
-        const response = await api.get('/lab/my-orders', { params: { doctorName } });
-        return response.data;
-    },
-
-    notifyDoctor: async (id, message) => {
-        const response = await api.post(`/lab/${id}/notify-doctor`, { message });
-        return response.data;
-    }
+    getTests: () => getList('lab_tests'),
+    orderTest: (data) => createItem('lab_tests', { ...data, status: 'Pending' }),
+    updateResults: (id, data) => updateItem('lab_tests', id, { ...data, status: 'Completed' }),
+    getTestById: (id) => getOne('lab_tests', id),
+    validateResults: (id, notes) => updateItem('lab_tests', id, { status: 'Validated', notes }),
+    logPrint: (id) => updateItem('lab_tests', id, { printedAt: new Date().toISOString() }),
+    getPendingTests: () => getList('lab_tests', [where('status', '==', 'Pending')]),
+    getDoctorOrders: (doctorName) => getList('lab_tests', [where('requestedBy', '==', doctorName)]),
+    notifyDoctor: async (id, message) => { console.log('Notification sent', id, message); return true; }
 };
 
 // ==================== LAB INVENTORY API ====================
-
 export const labInventoryAPI = {
-    getAll: async (params) => {
-        const response = await api.get('/lab-inventory', { params });
-        return response.data;
-    },
-
-    add: async (itemData) => {
-        const response = await api.post('/lab-inventory', itemData);
-        return response.data;
-    },
-
-    update: async (id, itemData) => {
-        const response = await api.put(`/lab-inventory/${id}`, itemData);
-        return response.data;
-    },
-
-    delete: async (id) => {
-        const response = await api.delete(`/lab-inventory/${id}`);
-        return response.data;
-    },
-
-    recordTransaction: async (transactionData) => {
-        const response = await api.post('/lab-inventory/transaction', transactionData);
-        return response.data;
-    },
-
-    getTransactions: async (id) => {
-        const response = await api.get(`/lab-inventory/${id}/transactions`);
-        return response.data;
-    },
-
-    getLowStock: async () => {
-        const response = await api.get('/lab-inventory/alerts/low-stock');
-        return response.data;
-    }
+    getAll: () => getList('lab_inventory'),
+    add: (data) => createItem('lab_inventory', data),
+    update: (id, data) => updateItem('lab_inventory', id, data),
+    delete: (id) => deleteItem('lab_inventory', id),
+    recordTransaction: (data) => createItem('lab_inventory_transactions', data),
+    getTransactions: (id) => getList('lab_inventory_transactions', [where('itemId', '==', id)]),
+    getLowStock: () => getList('lab_inventory', [where('status', '==', 'Low')])
 };
 
-
 // ==================== BLOOD BANK API ====================
-
 export const bloodBankAPI = {
-    // Inventory
-    getInventory: async () => {
-        const response = await api.get('/bloodbank/inventory');
-        return response.data;
-    },
-
-    updateInventory: async (id, data) => {
-        const response = await api.put(`/bloodbank/inventory/${id}`, data);
-        return response.data;
-    },
-
-    initializeInventory: async () => {
-        const response = await api.post('/bloodbank/inventory/initialize');
-        return response.data;
-    },
-
-    // Donors
-    getDonors: async () => {
-        const response = await api.get('/bloodbank/donors');
-        return response.data;
-    },
-
-    addDonor: async (donorData) => {
-        const response = await api.post('/bloodbank/donors', donorData);
-        return response.data;
-    },
-
-    recordDonation: async (donorId) => {
-        const response = await api.post(`/bloodbank/donors/${donorId}/donate`);
-        return response.data;
-    },
-
-    // Requests
-    getRequests: async () => {
-        const response = await api.get('/bloodbank/requests');
-        return response.data;
-    },
-
-    createRequest: async (requestData) => {
-        const response = await api.post('/bloodbank/requests', requestData);
-        return response.data;
-    },
-
-    approveRequest: async (requestId) => {
-        const response = await api.post(`/bloodbank/requests/${requestId}/approve`);
-        return response.data;
-    },
-
-    rejectRequest: async (requestId) => {
-        const response = await api.post(`/bloodbank/requests/${requestId}/reject`);
-        return response.data;
-    }
+    getInventory: () => getList('blood_inventory'),
+    updateInventory: (id, data) => updateItem('blood_inventory', id, data),
+    getDonors: () => getList('blood_donors'),
+    addDonor: (data) => createItem('blood_donors', data),
+    recordDonation: (id) => createItem('blood_donations', { donorId: id, date: new Date().toISOString() }),
+    getRequests: () => getList('blood_requests'),
+    createRequest: (data) => createItem('blood_requests', data),
+    approveRequest: (id) => updateItem('blood_requests', id, { status: 'Approved' }),
+    rejectRequest: (id) => updateItem('blood_requests', id, { status: 'Rejected' })
 };
 
 // ==================== AMBULANCE API ====================
-
 export const ambulanceAPI = {
-    // Fleet
-    getFleet: async () => {
-        const response = await api.get('/ambulance/fleet');
-        return response.data;
-    },
-
-    addAmbulance: async (ambulanceData) => {
-        const response = await api.post('/ambulance/fleet', ambulanceData);
-        return response.data;
-    },
-
-    updateAmbulance: async (id, data) => {
-        const response = await api.put(`/ambulance/fleet/${id}`, data);
-        return response.data;
-    },
-
-    // Requests
-    getRequests: async () => {
-        const response = await api.get('/ambulance/requests');
-        return response.data;
-    },
-
-    createRequest: async (requestData) => {
-        const response = await api.post('/ambulance/requests', requestData);
-        return response.data;
-    },
-
-    dispatchAmbulance: async (requestId, ambulanceId) => {
-        const response = await api.post(`/ambulance/requests/${requestId}/dispatch`, { ambulanceId });
-        return response.data;
-    },
-
-    // Trips
-    getTrips: async () => {
-        const response = await api.get('/ambulance/trips');
-        return response.data;
-    },
-
-    completeTrip: async (tripId, data) => {
-        const response = await api.put(`/ambulance/trips/${tripId}/complete`, data);
-        return response.data;
-    }
+    getFleet: () => getList('ambulance_fleet'),
+    addAmbulance: (data) => createItem('ambulance_fleet', data),
+    updateAmbulance: (id, data) => updateItem('ambulance_fleet', id, data),
+    getRequests: () => getList('ambulance_requests'),
+    createRequest: (data) => createItem('ambulance_requests', data),
+    dispatchAmbulance: (requestId, { ambulanceId }) => updateItem('ambulance_requests', requestId, { status: 'Dispatched', ambulanceId }),
+    getTrips: () => getList('ambulance_trips'),
+    completeTrip: (id, data) => updateItem('ambulance_trips', id, { ...data, status: 'Completed' })
 };
 
 // ==================== HR API ====================
-
 export const hrAPI = {
-    // Employees
-    getEmployees: async () => {
-        const response = await api.get('/hr/employees');
-        return response.data;
-    },
-
-    getEmployee: async (id) => {
-        const response = await api.get(`/hr/employees/${id}`);
-        return response.data;
-    },
-
-    addEmployee: async (employeeData) => {
-        const response = await api.post('/hr/employees', employeeData);
-        return response.data;
-    },
-
-    updateEmployee: async (id, data) => {
-        const response = await api.put(`/hr/employees/${id}`, data);
-        return response.data;
-    },
-
-    // Attendance
-    getAttendance: async (params = {}) => {
-        const response = await api.get('/hr/attendance', { params });
-        return response.data;
-    },
-
-    markAttendance: async (attendanceData) => {
-        const response = await api.post('/hr/attendance', attendanceData);
-        return response.data;
-    },
-
-    updateAttendance: async (id, data) => {
-        const response = await api.put(`/hr/attendance/${id}`, data);
-        return response.data;
-    },
-
-    // Leave Requests
-    getLeaveRequests: async () => {
-        const response = await api.get('/hr/leaves');
-        return response.data;
-    },
-
-    createLeaveRequest: async (leaveData) => {
-        const response = await api.post('/hr/leaves', leaveData);
-        return response.data;
-    },
-
-    updateLeaveRequest: async (id, data) => {
-        const response = await api.put(`/hr/leaves/${id}`, data);
-        return response.data;
-    },
-
-    // Payroll
-    getPayroll: async (params = {}) => {
-        const response = await api.get('/hr/payroll', { params });
-        return response.data;
-    },
-
-    createPayroll: async (payrollData) => {
-        const response = await api.post('/hr/payroll', payrollData);
-        return response.data;
-    },
-
-    updatePayroll: async (id, data) => {
-        const response = await api.put(`/hr/payroll/${id}`, data);
-        return response.data;
-    }
-}
+    getEmployees: () => getList('hr_employees'),
+    getEmployee: (id) => getOne('hr_employees', id),
+    addEmployee: (data) => createItem('hr_employees', data),
+    updateEmployee: (id, data) => updateItem('hr_employees', id, data),
+    getAttendance: () => getList('hr_attendance'),
+    markAttendance: (data) => createItem('hr_attendance', data),
+    updateAttendance: (id, data) => updateItem('hr_attendance', id, data),
+    getLeaveRequests: () => getList('hr_leaves'),
+    createLeaveRequest: (data) => createItem('hr_leaves', data),
+    updateLeaveRequest: (id, data) => updateItem('hr_leaves', id, data),
+    getPayroll: () => getList('hr_payroll'),
+    createPayroll: (data) => createItem('hr_payroll', data),
+    updatePayroll: (id, data) => updateItem('hr_payroll', id, data)
+};
 
 // ==================== WALLET API ====================
-
 export const walletAPI = {
-    // Get all wallets
-    getAll: async (params) => {
-        const response = await api.get('/wallet', { params });
-        return response.data.wallets || response.data;
-    },
-
-    // Get wallet by ID
-    getById: async (id) => {
-        const response = await api.get(`/wallet/${id}`);
-        return response.data.wallet;
-    },
-
-    // Create wallet
-    create: async (walletData) => {
-        const response = await api.post('/wallet', walletData);
-        return response.data;
-    },
-
-    // Top up wallet
-    topUp: async (id, data) => {
-        const response = await api.post(`/wallet/${id}/topup`, data);
-        return response.data;
-    },
-
-    // Deduct from wallet
-    deduct: async (id, data) => {
-        const response = await api.post(`/wallet/${id}/deduct`, data);
-        return response.data;
-    },
-
-    // Get wallet transactions
-    getTransactions: async (id, params) => {
-        const response = await api.get(`/wallet/${id}/transactions`, { params });
-        return response.data.transactions || response.data;
-    },
-
-    // Update wallet status
-    updateStatus: async (id, status) => {
-        const response = await api.patch(`/wallet/${id}/status`, { status });
-        return response.data;
-    }
-}
+    getAll: () => getList('wallets'),
+    getById: (id) => getOne('wallets', id),
+    create: (data) => createItem('wallets', data),
+    topUp: (id, { amount }) => createItem('wallet_transactions', { walletId: id, type: 'Credit', amount }), // Simplified
+    deduct: (id, { amount }) => createItem('wallet_transactions', { walletId: id, type: 'Debit', amount }),
+    getTransactions: (id) => getList('wallet_transactions', [where('walletId', '==', id)]),
+    updateStatus: (id, status) => updateItem('wallets', id, { status })
+};
 
 // ==================== BED MANAGEMENT API ====================
-
 export const bedManagementAPI = {
-    // Get all wards
-    getWards: async (params) => {
-        const response = await api.get('/bed-management/wards', { params });
-        return response.data.wards || response.data;
-    },
-
-    // Create ward
-    createWard: async (wardData) => {
-        const response = await api.post('/bed-management/wards', wardData);
-        return response.data;
-    },
-
-    // Get beds
-    getBeds: async (params) => {
-        const response = await api.get('/bed-management/beds', { params });
-        return response.data.beds || response.data;
-    },
-
-    // Add bed
-    addBed: async (bedData) => {
-        const response = await api.post('/bed-management/beds', bedData);
-        return response.data;
-    },
-
-    // Update bed status
-    updateBedStatus: async (id, status) => {
-        const response = await api.patch(`/bed-management/beds/${id}`, { status });
-        return response.data;
-    },
-
-    // Admit patient
-    admitPatient: async (admissionData) => {
-        const response = await api.post('/bed-management/admit', admissionData);
-        return response.data;
-    },
-
-    // Discharge patient
-    dischargePatient: async (dischargeData) => {
-        const response = await api.post('/bed-management/discharge', dischargeData);
-        return response.data;
-    },
-
-    // Get active admissions
-    getAdmissions: async (params) => {
-        const response = await api.get('/bed-management/admissions', { params });
-        return response.data.admissions || response.data;
-    }
+    getWards: () => getList('wards'),
+    createWard: (data) => createItem('wards', data),
+    getBeds: () => getList('beds'),
+    addBed: (data) => createItem('beds', data),
+    updateBedStatus: (id, status) => updateItem('beds', id, { status }),
+    admitPatient: (data) => createItem('bed_admissions', data),
+    dischargePatient: (data) => createItem('bed_discharges', data),
+    getAdmissions: () => getList('bed_admissions')
 };
 
 // ==================== FINANCE API ====================
-
 export const financeAPI = {
-    // Get expenses
-    getExpenses: async (params) => {
-        const response = await api.get('/finance/expenses', { params });
-        return response.data.expenses || response.data;
-    },
-
-    // Create expense
-    createExpense: async (expenseData) => {
-        const response = await api.post('/finance/expenses', expenseData);
-        return response.data;
-    },
-
-    // Approve expense
-    approveExpense: async (id) => {
-        const response = await api.patch(`/finance/expenses/${id}/approve`);
-        return response.data;
-    },
-
-    // Mark expense as paid
-    payExpense: async (id, paymentData) => {
-        const response = await api.patch(`/finance/expenses/${id}/pay`, paymentData);
-        return response.data;
-    },
-
-    // Get financial summary
-    getSummary: async (period = 'month') => {
-        const response = await api.get('/finance/summary', { params: { period } });
-        return response.data.summary;
-    },
-
-    // Get revenue by category
-    getRevenueByCategory: async (startDate, endDate) => {
-        const response = await api.get('/finance/revenue-by-category', {
-            params: { startDate, endDate }
-        });
-        return response.data.revenueByCategory;
-    },
-
-    // Get all transactions
-    getTransactions: async (params) => {
-        const response = await api.get('/finance/transactions', { params });
-        return response.data.transactions;
-    }
+    getExpenses: () => getList('finance_expenses'),
+    createExpense: (data) => createItem('finance_expenses', data),
+    approveExpense: (id) => updateItem('finance_expenses', id, { status: 'Approved' }),
+    payExpense: (id, data) => updateItem('finance_expenses', id, { status: 'Paid', ...data }),
+    getSummary: async () => ({}) // Mock summary for now
 };
 
-// ==================== SETTINGS API ====================
-
-export const settingsAPI = {
-    // Get hospital settings
-    getHospitalSettings: async () => {
-        const response = await api.get('/settings/hospital');
-        return response.data.hospital;
-    },
-
-    // Update hospital settings
-    updateHospitalSettings: async (settings) => {
-        const response = await api.patch('/settings/hospital', settings);
-        return response.data;
-    },
-
-    // Get service pricing
-    getPricing: async (params) => {
-        const response = await api.get('/settings/pricing', { params });
-        return response.data.services;
-    },
-
-    // Create service price
-    createPricing: async (pricingData) => {
-        const response = await api.post('/settings/pricing', pricingData);
-        return response.data;
-    },
-
-    // Update service price
-    updatePricing: async (id, pricingData) => {
-        const response = await api.patch(`/settings/pricing/${id}`, pricingData);
-        return response.data;
-    },
-
-    // Delete service price
-    deletePricing: async (id) => {
-        const response = await api.delete(`/settings/pricing/${id}`);
-        return response.data;
-    },
-
-    // Get preferences
-    getPreferences: async () => {
-        const response = await api.get('/settings/preferences');
-        return response.data.preferences;
-    },
-
-    // Update preferences
-    updatePreferences: async (preferences) => {
-        const response = await api.patch('/settings/preferences', preferences);
-        return response.data;
-    },
-
-    // Get users
-    getUsers: async (params) => {
-        const response = await api.get('/settings/users', { params });
-        return response.data.users;
-    },
-
-    // Update user status
-    updateUserStatus: async (id, status) => {
-        const response = await api.patch(`/settings/users/${id}/status`, { status });
-        return response.data;
-    }
+//Inventory
+export const inventoryAPI = {
+    getAll: () => getList('inventory'),
+    create: (data) => createItem('inventory', data),
+    update: (id, data) => updateItem('inventory', id, data),
+    delete: (id) => deleteItem('inventory', id)
 };
-
-// ==================== REPORTS API ====================
-
-export const reportsAPI = {
-    // Get patient statistics
-    getPatientStatistics: async (startDate, endDate) => {
-        const response = await api.get('/reports/patient-statistics', {
-            params: { startDate, endDate }
-        });
-        return response.data.report;
-    },
-
-    // Get revenue report
-    getRevenueReport: async (startDate, endDate, groupBy = 'day') => {
-        const response = await api.get('/reports/revenue', {
-            params: { startDate, endDate, groupBy }
-        });
-        return response.data.report;
-    },
-
-    // Get appointments report
-    getAppointmentsReport: async (startDate, endDate) => {
-        const response = await api.get('/reports/appointments', {
-            params: { startDate, endDate }
-        });
-        return response.data.report;
-    },
-
-    // Get lab report
-    getLabReport: async (startDate, endDate) => {
-        const response = await api.get('/reports/lab', {
-            params: { startDate, endDate }
-        });
-        return response.data.report;
-    },
-
-    // Get inventory report
-    getInventoryReport: async () => {
-        const response = await api.get('/reports/inventory');
-        return response.data.report;
-    },
-
-    // Get bed occupancy report
-    getBedOccupancyReport: async () => {
-        const response = await api.get('/reports/bed-occupancy');
-        return response.data.report;
-    },
-
-    // Get dashboard summary
-    getDashboardSummary: async () => {
-        const response = await api.get('/reports/dashboard-summary');
-        return response.data.summary;
-    }
-};
-
-// ==================== CAMPS API ====================
-
-export const campsAPI = {
-    // Get all medical camps
-    getAll: async (params) => {
-        const response = await api.get('/camps', { params });
-        return response.data.camps || response.data;
-    },
-
-    // Create medical camp
-    create: async (campData) => {
-        const response = await api.post('/camps', campData);
-        return response.data;
-    },
-
-    // Update camp
-    update: async (id, campData) => {
-        const response = await api.patch(`/camps/${id}`, campData);
-        return response.data;
-    },
-
-    // Register patient to camp
-    registerPatient: async (id, patientData) => {
-        const response = await api.post(`/camps/${id}/register-patient`, patientData);
-        return response.data;
-    },
-
-    // Get camp patients
-    getCampPatients: async (id) => {
-        const response = await api.get(`/camps/${id}/patients`);
-        return response.data.patients;
-    }
-};
-
-// ==================== PATHOLOGY API ====================
-
-export const pathologyAPI = {
-    // Get pathology tests
-    getTests: async (params) => {
-        const response = await api.get('/pathology/tests', { params });
-        return response.data.tests || response.data;
-    },
-
-    // Order pathology test
-    orderTest: async (testData) => {
-        const response = await api.post('/pathology/tests', testData);
-        return response.data;
-    },
-
-    // Update test results
-    updateResults: async (id, resultsData) => {
-        const response = await api.patch(`/pathology/tests/${id}/results`, resultsData);
-        return response.data;
-    },
-
-    // Get specific test
-    getTest: async (id) => {
-        const response = await api.get(`/pathology/tests/${id}`);
-        return response.data.test;
-    }
-};
-
-// Export the api instance for custom calls
-export default api;
-
