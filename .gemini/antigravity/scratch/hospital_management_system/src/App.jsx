@@ -6,6 +6,7 @@ import { WalletProvider } from './context/WalletContext';
 import { PatientAuthProvider } from './context/PatientAuthContext';
 import { AuthProvider } from './context/AuthContext';
 import { BrandingProvider } from './context/BrandingContext';
+import { SubscriptionProvider } from './context/SubscriptionContext';
 import Layout from './components/Layout';
 import OfflineIndicator from './components/OfflineIndicator';
 import ErrorBoundary from './components/common/ErrorBoundary';
@@ -39,6 +40,11 @@ const SettingsDashboard = React.lazy(() => import('./modules/Settings/SettingsDa
 const ReportsDashboard = React.lazy(() => import('./modules/Reports/ReportsDashboard'));
 const TriageDashboard = React.lazy(() => import('./modules/Triage/TriageDashboard'));
 const PathologyDashboard = React.lazy(() => import('./modules/Pathology/PathologyDashboard'));
+
+// Subscription Management
+const SubscriptionsDashboard = React.lazy(() => import('./modules/Subscriptions/SubscriptionsDashboard'));
+const SubscriptionRequest = React.lazy(() => import('./modules/Subscriptions/SubscriptionRequest'));
+const OrganizationDashboard = React.lazy(() => import('./modules/Subscriptions/OrganizationDashboard'));
 
 // Staff & Patient Authentication
 const StaffLogin = React.lazy(() => import('./pages/StaffLogin'));
@@ -74,51 +80,57 @@ function App() {
           <PatientAuthProvider>
             <AuthProvider>
               <BrandingProvider>
-                <BrowserRouter>
-                  <ErrorBoundary>
-                    <Suspense fallback={<Layout><PageLoader /></Layout>}>
-                      <Routes>
-                        {/* Public Routes (No Auth Required) */}
-                        <Route path="/staff-login" element={<StaffLogin />} />
-                        <Route path="/patient-login" element={<PatientLogin />} />
-                        <Route path="/patient-portal" element={<PatientPortal />} />
+                <SubscriptionProvider>
+                  <BrowserRouter>
+                    <ErrorBoundary>
+                      <Suspense fallback={<Layout><PageLoader /></Layout>}>
+                        <Routes>
+                          {/* Public Routes (No Auth Required) */}
+                          <Route path="/staff-login" element={<StaffLogin />} />
+                          <Route path="/patient-login" element={<PatientLogin />} />
+                          <Route path="/subscribe" element={<SubscriptionRequest />} />
+                          <Route path="/patient-portal" element={<PatientPortal />} />
 
-                        {/* Protected Staff Routes (With Layout & Auth) */}
-                        <Route path="/" element={<Layout />}>
-                          <Route index element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                          <Route path="dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                          <Route path="reception" element={<ProtectedRoute requiredPermission="reception"><ReceptionDashboard /></ProtectedRoute>} />
-                          <Route path="doctor" element={<ProtectedRoute requiredPermission="doctor"><DoctorDashboard /></ProtectedRoute>} />
-                          <Route path="emr" element={<ProtectedRoute requiredPermission="emr"><EMRDashboard /></ProtectedRoute>} />
-                          <Route path="pharmacy" element={<ProtectedRoute requiredPermission="pharmacy"><PharmacyDashboard /></ProtectedRoute>} />
-                          <Route path="laboratory" element={<ProtectedRoute requiredPermission="laboratory"><LaboratoryDashboard /></ProtectedRoute>} />
-                          <Route path="radiology" element={<ProtectedRoute requiredPermission="radiology"><RadiologyDashboard /></ProtectedRoute>} />
-                          <Route path="bed-management" element={<ProtectedRoute requiredPermission="bed-management"><BedManagementDashboard /></ProtectedRoute>} />
-                          <Route path="nursing" element={<ProtectedRoute requiredPermission="nursing"><NursingDashboard /></ProtectedRoute>} />
-                          <Route path="theatre" element={<ProtectedRoute requiredPermission="theatre"><TheatreDashboard /></ProtectedRoute>} />
-                          <Route path="maternity" element={<ProtectedRoute requiredPermission="maternity"><MaternityDashboard /></ProtectedRoute>} />
-                          <Route path="blood-bank" element={<ProtectedRoute requiredPermission="blood-bank"><BloodBankDashboard /></ProtectedRoute>} />
-                          <Route path="ambulance" element={<ProtectedRoute requiredPermission="ambulance"><AmbulanceDashboard /></ProtectedRoute>} />
-                          <Route path="finance" element={<ProtectedRoute requiredPermission="finance"><FinanceDashboard /></ProtectedRoute>} />
-                          <Route path="insurance" element={<ProtectedRoute requiredPermission="insurance"><InsuranceDashboard /></ProtectedRoute>} />
-                          <Route path="hr" element={<ProtectedRoute requiredPermission="hr"><HRDashboard /></ProtectedRoute>} />
-                          <Route path="services" element={<ProtectedRoute requiredPermission="services"><ServicesDashboard /></ProtectedRoute>} />
-                          <Route path="wallet" element={<ProtectedRoute requiredPermission="wallet"><WalletDashboard /></ProtectedRoute>} />
-                          <Route path="communication" element={<ProtectedRoute requiredPermission="communication"><CommunicationDashboard /></ProtectedRoute>} />
-                          <Route path="camps" element={<ProtectedRoute requiredPermission="camps"><CampsDashboard /></ProtectedRoute>} />
-                          <Route path="queue" element={<ProtectedRoute requiredPermission="queue"><QueueDashboard /></ProtectedRoute>} />
-                          <Route path="triage" element={<ProtectedRoute requiredPermission="triage"><TriageDashboard /></ProtectedRoute>} />
-                          <Route path="pathology" element={<ProtectedRoute requiredPermission="pathology"><PathologyDashboard /></ProtectedRoute>} />
-                          <Route path="admin" element={<ProtectedRoute requiredPermission="admin"><AdminDashboard /></ProtectedRoute>} />
-                          <Route path="settings" element={<ProtectedRoute requiredPermission="settings"><SettingsDashboard /></ProtectedRoute>} />
-                          <Route path="reports" element={<ProtectedRoute requiredPermission="reports"><ReportsDashboard /></ProtectedRoute>} />
-                        </Route>
-                      </Routes>
-                    </Suspense>
-                  </ErrorBoundary>
-                </BrowserRouter>
-                {/* Offline Indicator - Shows when offline or has pending syncs */}
-                <OfflineIndicator />
+                          {/* Protected Staff Routes (With Layout & Auth) */}
+                          <Route path="/" element={<Layout />}>
+                            <Route index element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                            <Route path="dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                            <Route path="reception" element={<ProtectedRoute requiredPermission="reception"><ReceptionDashboard /></ProtectedRoute>} />
+                            <Route path="doctor" element={<ProtectedRoute requiredPermission="doctor"><DoctorDashboard /></ProtectedRoute>} />
+                            <Route path="emr" element={<ProtectedRoute requiredPermission="emr"><EMRDashboard /></ProtectedRoute>} />
+                            <Route path="pharmacy" element={<ProtectedRoute requiredPermission="pharmacy"><PharmacyDashboard /></ProtectedRoute>} />
+                            <Route path="laboratory" element={<ProtectedRoute requiredPermission="laboratory"><LaboratoryDashboard /></ProtectedRoute>} />
+                            <Route path="radiology" element={<ProtectedRoute requiredPermission="radiology"><RadiologyDashboard /></ProtectedRoute>} />
+                            <Route path="bed-management" element={<ProtectedRoute requiredPermission="bed-management"><BedManagementDashboard /></ProtectedRoute>} />
+                            <Route path="nursing" element={<ProtectedRoute requiredPermission="nursing"><NursingDashboard /></ProtectedRoute>} />
+                            <Route path="theatre" element={<ProtectedRoute requiredPermission="theatre"><TheatreDashboard /></ProtectedRoute>} />
+                            <Route path="maternity" element={<ProtectedRoute requiredPermission="maternity"><MaternityDashboard /></ProtectedRoute>} />
+                            <Route path="blood-bank" element={<ProtectedRoute requiredPermission="blood-bank"><BloodBankDashboard /></ProtectedRoute>} />
+                            <Route path="ambulance" element={<ProtectedRoute requiredPermission="ambulance"><AmbulanceDashboard /></ProtectedRoute>} />
+                            <Route path="finance" element={<ProtectedRoute requiredPermission="finance"><FinanceDashboard /></ProtectedRoute>} />
+                            <Route path="insurance" element={<ProtectedRoute requiredPermission="insurance"><InsuranceDashboard /></ProtectedRoute>} />
+                            <Route path="hr" element={<ProtectedRoute requiredPermission="hr"><HRDashboard /></ProtectedRoute>} />
+                            <Route path="services" element={<ProtectedRoute requiredPermission="services"><ServicesDashboard /></ProtectedRoute>} />
+                            <Route path="wallet" element={<ProtectedRoute requiredPermission="wallet"><WalletDashboard /></ProtectedRoute>} />
+                            <Route path="communication" element={<ProtectedRoute requiredPermission="communication"><CommunicationDashboard /></ProtectedRoute>} />
+                            <Route path="camps" element={<ProtectedRoute requiredPermission="camps"><CampsDashboard /></ProtectedRoute>} />
+                            <Route path="queue" element={<ProtectedRoute requiredPermission="queue"><QueueDashboard /></ProtectedRoute>} />
+                            <Route path="triage" element={<ProtectedRoute requiredPermission="triage"><TriageDashboard /></ProtectedRoute>} />
+                            <Route path="pathology" element={<ProtectedRoute requiredPermission="pathology"><PathologyDashboard /></ProtectedRoute>} />
+                            <Route path="admin" element={<ProtectedRoute requiredPermission="admin"><AdminDashboard /></ProtectedRoute>} />
+                            <Route path="settings" element={<ProtectedRoute requiredPermission="settings"><SettingsDashboard /></ProtectedRoute>} />
+                            <Route path="reports" element={<ProtectedRoute requiredPermission="reports"><ReportsDashboard /></ProtectedRoute>} />
+
+                            {/* Subscription Management */}
+                            <Route path="subscriptions" element={<ProtectedRoute requiredPermission="admin"><SubscriptionsDashboard /></ProtectedRoute>} />
+                            <Route path="organization" element={<OrganizationDashboard />} />
+                          </Route>
+                        </Routes>
+                      </Suspense>
+                    </ErrorBoundary>
+                  </BrowserRouter>
+                  <OfflineIndicator />
+                </SubscriptionProvider>
               </BrandingProvider>
             </AuthProvider>
           </PatientAuthProvider>
