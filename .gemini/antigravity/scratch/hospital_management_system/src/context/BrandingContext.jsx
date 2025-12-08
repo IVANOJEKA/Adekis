@@ -49,7 +49,60 @@ export const BrandingProvider = ({ children }) => {
                 { title: "Health Insurance", description: "We verify and accept major insurance providers for cashless treatments.", icon: "Shield" }
             ],
             emergencyPhone: '+256 700 999 999',
-            welcomeMessage: 'Welcome to Adekis+'
+            welcomeMessage: 'Welcome to Adekis+',
+            // New CMS Content
+            promotions: [
+                {
+                    id: 1,
+                    title: "Free Dental Checkup Camp",
+                    description: "Join us this weekend for comprehensive dental screenings for the whole family.",
+                    image: "https://images.unsplash.com/photo-1606811841689-23dfddce3e95?auto=format&fit=crop&q=80",
+                    active: true
+                },
+                {
+                    id: 2,
+                    title: "Heart Health Month",
+                    description: "50% off on all cardiac profile tests throughout February.",
+                    image: "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&q=80",
+                    active: true
+                }
+            ],
+            healthCamps: [
+                {
+                    id: 1,
+                    title: "Community Eye Care Camp",
+                    date: "2024-03-15",
+                    time: "09:00 AM - 04:00 PM",
+                    location: "Main Hospital Grounds",
+                    description: "Free cataract surgeries and vision testing for seniors.",
+                    image: "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&q=80",
+                    slots: 50
+                }
+            ],
+            walletPackages: [
+                {
+                    id: 1,
+                    name: "Silver Saver",
+                    price: "50,000 UGX/yr",
+                    benefits: ["5% off consultations", "Priority booking", "Digital health records"],
+                    color: "slate"
+                },
+                {
+                    id: 2,
+                    name: "Gold Guardian",
+                    price: "150,000 UGX/yr",
+                    benefits: ["15% off consultations", "Free annual checkup", "Family coverage (up to 4)", "24/7 Tele-medicine"],
+                    color: "amber",
+                    recommended: true
+                },
+                {
+                    id: 3,
+                    name: "Platinum Premier",
+                    price: "300,000 UGX/yr",
+                    benefits: ["100% cashless OP treatments", "Private room upgrades", "Unlimited consultations", "Home sample collection"],
+                    color: "cyan"
+                }
+            ]
         }
     };
 

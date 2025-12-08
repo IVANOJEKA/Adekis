@@ -45,6 +45,8 @@ const StaffLogin = React.lazy(() => import('./pages/StaffLogin'));
 const PatientLogin = React.lazy(() => import('./pages/PatientLogin'));
 const PatientPortal = React.lazy(() => import('./pages/PatientPortal'));
 const LandingPage = React.lazy(() => import('./pages/LandingPage'));
+const HealthCamps = React.lazy(() => import('./pages/HealthCamps'));
+const ShandWalletPage = React.lazy(() => import('./pages/ShandWalletPage'));
 
 // Loading Fallback
 const PageLoader = () => (
@@ -81,6 +83,8 @@ function App() {
                       <Routes>
                         {/* Public Routes (No Auth Required) */}
                         <Route path="/" element={<LandingPage />} />
+                        <Route path="/health-camps" element={<HealthCamps />} />
+                        <Route path="/shand-wallet" element={<ShandWalletPage />} />
                         <Route path="/staff-login" element={<StaffLogin />} />
                         <Route path="/patient-login" element={<PatientLogin />} />
                         <Route path="/patient-portal" element={<PatientPortal />} />
