@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import PrinterSettings from './components/PrinterSettings';
 import BrandingSettings from './components/BrandingSettings';
+import WebsiteSettings from './components/WebsiteSettings';
 
 const currencies = [
     { code: 'UGX', name: 'Uganda Shilling', symbol: 'UGX' },
@@ -265,7 +266,7 @@ const SettingsDashboard = () => {
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
                 {/* Tabs */}
                 <div className="flex items-center gap-1 p-2 border-b border-slate-100 bg-slate-50/50 overflow-x-auto">
-                    {['General', 'Users', 'Roles & Permissions', 'Modules', 'Biometric Devices', 'Printer', 'Billing', 'Notifications', 'Appearance', 'System'].map((tab) => {
+                    {['General', 'Website', 'Users', 'Roles & Permissions', 'Modules', 'Biometric Devices', 'Printer', 'Billing', 'Notifications', 'Appearance', 'System'].map((tab) => {
                         const tabKey = tab.toLowerCase().replace(/ & /g, '-').replace(/ /g, '-');
                         const isActive = activeTab === tabKey;
                         return (
@@ -288,6 +289,11 @@ const SettingsDashboard = () => {
                     {/* General Tab (Branding) */}
                     {activeTab === 'general' && (
                         <BrandingSettings />
+                    )}
+
+                    {/* Website Tab */}
+                    {activeTab === 'website' && (
+                        <WebsiteSettings />
                     )}
 
                     {/* Users Tab */}

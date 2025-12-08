@@ -39,8 +39,21 @@ const StaffLogin = () => {
         const result = await login(formData.email, formData.password);
 
         if (result.success) {
-            // Redirect to dashboard
-            navigate('/');
+            // Redirect based on role
+            const role = result.user?.role || 'Staff';
+            let path = '/dashboard';
+
+            switch (role) {
+                case 'Doctor': path = '/doctor'; break;
+                case 'Receptionist': path = '/reception'; break;
+                case 'Nurse': path = '/nursing'; break;
+                case 'Pharmacist': path = '/pharmacy'; break;
+                case 'Lab Technician': path = '/laboratory'; break;
+                case 'Radiologist': path = '/radiology'; break;
+                case 'Administrator': path = '/dashboard'; break;
+                default: path = '/dashboard';
+            }
+            navigate(path);
         } else {
             setError(result.error);
         }

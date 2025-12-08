@@ -26,7 +26,31 @@ export const BrandingProvider = ({ children }) => {
         address: 'Kampala, Uganda',
         footerText: '© 2024 Adekis+ | Powered by Adekis Technology',
         reportHeaderImage: null,
-        reportFooterImage: null
+        reportFooterImage: null,
+        // Website Configuration
+        websiteConfig: {
+            showTopBar: true,
+            heroTitle: 'Compassionate Care, Advanced Technology',
+            heroSubtitle: 'We provide world-class medical services with a personal touch. Check your lab results online or visit us for comprehensive healthcare solutions.',
+            heroImage: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80',
+            showStats: true,
+            stats: [
+                { value: '15k+', label: 'Patients Served' },
+                { value: '50+', label: 'Medical Staff' },
+                { value: '24/7', label: 'Emergency Care' },
+                { value: '10+', label: 'Specialties' }
+            ],
+            services: [
+                { title: "General Consultation", description: "Expert medical consultation for all your health concerns with experienced doctors.", icon: "Stethoscope" },
+                { title: "Advanced Laboratory", description: "State-of-the-art diagnostic laboratory services with quick turnaround times.", icon: "Microscope" },
+                { title: "24/7 Pharmacy", description: "Fully stocked pharmacy available round the clock for your medication needs.", icon: "Pill" },
+                { title: "Emergency Care", description: "Immediate emergency response and critical care services when every second counts.", icon: "Activity" },
+                { title: "Maternity Services", description: "Comprehensive antenatal and postnatal care for mothers and newborns.", icon: "Heart" },
+                { title: "Health Insurance", description: "We verify and accept major insurance providers for cashless treatments.", icon: "Shield" }
+            ],
+            emergencyPhone: '+256 700 999 999',
+            welcomeMessage: 'Welcome to Adekis+'
+        }
     };
 
     const [branding, setBranding] = useState(defaultBranding);

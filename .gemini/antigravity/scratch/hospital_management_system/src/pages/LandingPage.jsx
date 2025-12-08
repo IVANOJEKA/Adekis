@@ -19,63 +19,61 @@ import {
 } from 'lucide-react';
 import { useBranding } from '../context/BrandingContext';
 
+// Icon mapping for dynamic rendering
+const iconMap = {
+    Activity: <Activity size={32} className="text-red-500" />,
+    Heart: <Heart size={32} className="text-rose-500" />,
+    Phone: <Phone size={32} className="text-blue-500" />,
+    Shield: <Shield size={32} className="text-amber-500" />,
+    User: <User size={32} className="text-gray-500" />,
+    Stethoscope: <Stethoscope size={32} className="text-blue-500" />,
+    Microscope: <Microscope size={32} className="text-emerald-500" />,
+    Pill: <Pill size={32} className="text-purple-500" />,
+    Ambulance: <Ambulance size={32} className="text-red-600" />
+};
+
 const LandingPage = () => {
     const navigate = useNavigate();
     const { branding } = useBranding();
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 
-    // Hospital services configuration
-    const services = [
-        {
-            icon: <Stethoscope size={32} className="text-blue-500" />,
-            title: "General Consultation",
-            description: "Expert medical consultation for all your health concerns with experienced doctors."
-        },
-        {
-            icon: <Microscope size={32} className="text-emerald-500" />,
-            title: "Advanced Laboratory",
-            description: "State-of-the-art diagnostic laboratory services with quick turnaround times."
-        },
-        {
-            icon: <Pill size={32} className="text-purple-500" />,
-            title: "24/7 Pharmacy",
-            description: "Fully stocked pharmacy available round the clock for your medication needs."
-        },
-        {
-            icon: <Activity size={32} className="text-red-500" />,
-            title: "Emergency Care",
-            description: "Immediate emergency response and critical care services when every second counts."
-        },
-        {
-            icon: <Heart size={32} className="text-rose-500" />,
-            title: "Maternity Services",
-            description: "Comprehensive antenatal and postnatal care for mothers and newborns."
-        },
-        {
-            icon: <Shield size={32} className="text-amber-500" />,
-            title: "Health Insurance",
-            description: "We verify and accept major insurance providers for cashless treatments."
-        }
+    // Use config from context or fallbacks
+    const config = branding.websiteConfig || {
+        showTopBar: true,
+        heroTitle: 'Compassionate Care, Advanced Technology',
+        heroSubtitle: 'We provide world-class medical services with a personal touch.',
+        heroImage: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80',
+        showStats: true,
+        stats: [],
+        services: [],
+        emergencyPhone: branding.phone,
+        welcomeMessage: 'Welcome to Adekis+'
+    };
+
+    const services = config.services && config.services.length > 0 ? config.services : [
+        { title: "General Consultation", description: "Expert medical consultation.", icon: "Stethoscope" }
     ];
 
     return (
         <div className="min-h-screen bg-slate-50 font-sans">
             {/* Top Bar */}
-            <div className="bg-slate-900 text-slate-300 py-2 px-4 text-sm hidden md:block">
-                <div className="container mx-auto flex justify-between items-center">
-                    <div className="flex gap-6">
-                        <span className="flex items-center gap-2">
-                            <Phone size={14} /> {branding.phone}
-                        </span>
-                        <span className="flex items-center gap-2">
-                            <Clock size={14} /> Open 24 Hours / 7 Days
-                        </span>
-                    </div>
-                    <div className="flex gap-4">
-                        <span>Critical Care: +256 700 999 999</span>
+            {config.showTopBar && (
+                <div className="bg-slate-900 text-slate-300 py-2 px-4 text-sm hidden md:block">
+                    <div className="container mx-auto flex justify-between items-center">
+                        <div className="flex gap-6">
+                            <span className="flex items-center gap-2">
+                                <Phone size={14} /> {branding.phone}
+                            </span>
+                            <span className="flex items-center gap-2">
+                                <Clock size={14} /> Open 24 Hours / 7 Days
+                            </span>
+                        </div>
+                        <div className="flex gap-4">
+                            <span>Critical Care: {config.emergencyPhone}</span>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             {/* Navigation */}
             <nav className="bg-white shadow-sm sticky top-0 z-50">
@@ -83,9 +81,13 @@ const LandingPage = () => {
                     <div className="flex justify-between items-center h-20">
                         {/* Logo */}
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center shadow-lg">
-                                <Activity className="text-white" size={24} />
-                            </div>
+                            {branding.logo ? (
+                                <img src={branding.logo} alt="Logo" className="h-10" />
+                            ) : (
+                                <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center shadow-lg">
+                                    <Activity className="text-white" size={24} />
+                                </div>
+                            )}
                             <div>
                                 <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
                                     {branding.name}
@@ -139,21 +141,23 @@ const LandingPage = () => {
             {/* Hero Section */}
             <header className="relative bg-white overflow-hidden">
                 <div className="absolute inset-0 bg-slate-50">
-                    <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80')] bg-cover bg-center opacity-10"></div>
+                    <div
+                        className="absolute inset-0 bg-cover bg-center opacity-10 transition-all duration-700"
+                        style={{ backgroundImage: `url('${config.heroImage}')` }}
+                    ></div>
                     <div className="absolute inset-0 bg-gradient-to-r from-white via-white/80 to-transparent"></div>
                 </div>
 
                 <div className="container mx-auto px-4 py-20 relative">
                     <div className="max-w-2xl">
                         <span className="inline-block px-4 py-1 bg-emerald-100 text-emerald-800 text-sm font-bold rounded-full mb-6">
-                            Welcome to Adekis+
+                            {config.welcomeMessage}
                         </span>
                         <h1 className="text-5xl md:text-6xl font-bold text-slate-900 mb-6 leading-tight">
-                            Compassionate Care, <br />
-                            <span className="text-emerald-600">Advanced Technology</span>
+                            {config.heroTitle}
                         </h1>
                         <p className="text-xl text-slate-600 mb-8 leading-relaxed">
-                            We provide world-class medical services with a personal touch. Check your lab results online or visit us for comprehensive healthcare solutions.
+                            {config.heroSubtitle}
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4">
                             <button
@@ -189,7 +193,7 @@ const LandingPage = () => {
                         {services.map((service, index) => (
                             <div key={index} className="p-8 rounded-2xl bg-slate-50 border border-slate-100 hover:border-emerald-200 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
                                 <div className="mb-6 p-4 rounded-xl bg-white shadow-sm inline-block group-hover:scale-110 transition-transform">
-                                    {service.icon}
+                                    {iconMap[service.icon] || <Activity size={32} className="text-slate-400" />}
                                 </div>
                                 <h3 className="text-xl font-bold text-slate-900 mb-3">{service.title}</h3>
                                 <p className="text-slate-600 leading-relaxed">
@@ -202,53 +206,45 @@ const LandingPage = () => {
             </section>
 
             {/* About / Stats */}
-            <section id="about" className="py-20 bg-emerald-900 text-white relative overflow-hidden">
-                <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/medical-icons.png')]"></div>
-                <div className="container mx-auto px-4 relative">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-                        <div>
-                            <h2 className="text-3xl md:text-4xl font-bold mb-6">Why Choose {branding.name}?</h2>
-                            <div className="space-y-6 text-emerald-100">
-                                <p className="text-lg">
-                                    With over a decade of dedicated service, we have established ourselves as a pillar of healthcare excellence in the region.
-                                </p>
-                                <ul className="space-y-4">
-                                    <li className="flex items-center gap-3">
-                                        <CheckCircle className="text-emerald-400" /> Experienced team of specialists
-                                    </li>
-                                    <li className="flex items-center gap-3">
-                                        <CheckCircle className="text-emerald-400" /> Modern diagnostic equipment
-                                    </li>
-                                    <li className="flex items-center gap-3">
-                                        <CheckCircle className="text-emerald-400" /> Patient-centered approach
-                                    </li>
-                                    <li className="flex items-center gap-3">
-                                        <CheckCircle className="text-emerald-400" /> Easy online access to records
-                                    </li>
-                                </ul>
+            {config.showStats && config.stats && (
+                <section id="about" className="py-20 bg-emerald-900 text-white relative overflow-hidden">
+                    <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/medical-icons.png')]"></div>
+                    <div className="container mx-auto px-4 relative">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                            <div>
+                                <h2 className="text-3xl md:text-4xl font-bold mb-6">Why Choose {branding.name}?</h2>
+                                <div className="space-y-6 text-emerald-100">
+                                    <p className="text-lg">
+                                        With over a decade of dedicated service, we have established ourselves as a pillar of healthcare excellence in the region.
+                                    </p>
+                                    <ul className="space-y-4">
+                                        <li className="flex items-center gap-3">
+                                            <CheckCircle className="text-emerald-400" /> Experienced team of specialists
+                                        </li>
+                                        <li className="flex items-center gap-3">
+                                            <CheckCircle className="text-emerald-400" /> Modern diagnostic equipment
+                                        </li>
+                                        <li className="flex items-center gap-3">
+                                            <CheckCircle className="text-emerald-400" /> Patient-centered approach
+                                        </li>
+                                        <li className="flex items-center gap-3">
+                                            <CheckCircle className="text-emerald-400" /> Easy online access to records
+                                        </li>
+                                    </ul>
+                                </div>
                             </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="bg-white/10 p-6 rounded-2xl backdrop-blur-sm">
-                                <p className="text-4xl font-bold text-emerald-400 mb-2">15k+</p>
-                                <p className="text-emerald-100">Patients Served</p>
-                            </div>
-                            <div className="bg-white/10 p-6 rounded-2xl backdrop-blur-sm">
-                                <p className="text-4xl font-bold text-emerald-400 mb-2">50+</p>
-                                <p className="text-emerald-100">Medical Staff</p>
-                            </div>
-                            <div className="bg-white/10 p-6 rounded-2xl backdrop-blur-sm">
-                                <p className="text-4xl font-bold text-emerald-400 mb-2">24/7</p>
-                                <p className="text-emerald-100">Emergency Care</p>
-                            </div>
-                            <div className="bg-white/10 p-6 rounded-2xl backdrop-blur-sm">
-                                <p className="text-4xl font-bold text-emerald-400 mb-2">10+</p>
-                                <p className="text-emerald-100">Specialties</p>
+                            <div className="grid grid-cols-2 gap-6">
+                                {config.stats.map((stat, idx) => (
+                                    <div key={idx} className="bg-white/10 p-6 rounded-2xl backdrop-blur-sm">
+                                        <p className="text-4xl font-bold text-emerald-400 mb-2">{stat.value}</p>
+                                        <p className="text-emerald-100">{stat.label}</p>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </div>
-                </div>
-            </section>
+                </section>
+            )}
 
             {/* Quick Access Portal */}
             <section className="py-20 bg-slate-50">
@@ -319,7 +315,7 @@ const LandingPage = () => {
                             <h4 className="text-white font-bold mb-6">Emergency</h4>
                             <div className="bg-slate-800 p-6 rounded-xl border border-slate-700">
                                 <p className="text-sm mb-2">24/7 Emergency Line</p>
-                                <p className="text-2xl font-bold text-white mb-4">+256 700 999 999</p>
+                                <p className="text-2xl font-bold text-white mb-4">{branding.websiteConfig?.emergencyPhone || config.emergencyPhone}</p>
                                 <div className="flex gap-2">
                                     <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
                                     <span className="text-xs text-emerald-500 font-bold uppercase">Always Active</span>
