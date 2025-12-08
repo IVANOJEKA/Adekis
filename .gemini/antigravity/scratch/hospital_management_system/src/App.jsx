@@ -81,7 +81,6 @@ function App() {
                         {/* Public Routes (No Auth Required) */}
                         <Route path="/staff-login" element={<StaffLogin />} />
                         <Route path="/patient-login" element={<PatientLogin />} />
-                        <Route path="/subscribe" element={<SubscriptionRequest />} />
                         <Route path="/patient-portal" element={<PatientPortal />} />
 
                         {/* Protected Staff Routes (With Layout & Auth) */}
@@ -113,10 +112,6 @@ function App() {
                           <Route path="admin" element={<ProtectedRoute requiredPermission="admin"><AdminDashboard /></ProtectedRoute>} />
                           <Route path="settings" element={<ProtectedRoute requiredPermission="settings"><SettingsDashboard /></ProtectedRoute>} />
                           <Route path="reports" element={<ProtectedRoute requiredPermission="reports"><ReportsDashboard /></ProtectedRoute>} />
-
-                          {/* Subscription Management */}
-                          <Route path="subscriptions" element={<ProtectedRoute requiredPermission="admin"><SubscriptionsDashboard /></ProtectedRoute>} />
-                          <Route path="organization" element={<OrganizationDashboard />} />
                         </Route>
                       </Routes>
                     </Suspense>
