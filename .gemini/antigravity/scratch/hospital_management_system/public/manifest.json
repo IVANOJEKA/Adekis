@@ -1,7 +1,7 @@
 {
-  "name": "Hospital Management System",
-  "short_name": "HMS",
-  "description": "Comprehensive hospital management system with offline capabilities",
+  "name": "Adekis+",
+  "short_name": "Adekis+",
+  "description": "Adekis+ Hospital Management System - Comprehensive solution with offline capabilities",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -35,21 +35,35 @@
       "form_factor": "narrow"
     }
   ],
-  "categories": ["medical", "productivity", "business"],
+  "categories": [
+    "medical",
+    "productivity",
+    "business"
+  ],
   "shortcuts": [
     {
       "name": "Reception",
       "short_name": "Reception",
       "description": "Go to Reception module",
       "url": "/reception",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Finance",
       "short_name": "Finance",
       "description": "Go to Finance module",
       "url": "/finance",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }

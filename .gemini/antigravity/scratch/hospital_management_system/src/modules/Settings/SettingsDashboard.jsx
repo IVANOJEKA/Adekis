@@ -241,7 +241,7 @@ const SettingsDashboard = () => {
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800">System Settings</h1>
-                    <p className="text-slate-500 text-sm mt-1">Configure and manage hospital management system</p>
+                    <p className="text-slate-500 text-sm mt-1">Configure and manage Adekis+ system</p>
                 </div>
                 <div className="flex gap-3">
                     <button
