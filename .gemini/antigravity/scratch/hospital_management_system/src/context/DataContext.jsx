@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { patientsAPI, bloodBankAPI, ambulanceAPI, hrAPI, insuranceAPI } from '../services/api';
+import { patientsAPI, bloodBankAPI, ambulanceAPI, hrAPI, insuranceAPI, websiteAPI } from '../services/api';
+import { generatePatientId } from '../utils/patientIdUtils';
 
 const DataContext = createContext();
 
@@ -86,13 +87,49 @@ const initialSystemSettings = {
     timezone: 'EAT',
     theme: 'light',
     consultationFees: {
-        OPD: 50000,  // Outpatient consultation fee
-        IPD: 100000  // Inpatient consultation fee
+        OPD: 50000,  // Outpatient consultation fee (Regular)
+        IPD: 100000  // Inpatient consultation fee (Regular)
+    },
+    // Insurance Premium Pricing - Insurance patients pay MORE
+    insurancePricing: {
+        consultationFees: {
+            OPD: 60000,   // 20% premium over regular
+            IPD: 125000   // 25% premium over regular
+        },
+        labMarkupPercent: 15,        // 15% higher for lab tests
+        radiologyMarkupPercent: 20,  // 20% higher for radiology
+        pharmacyMarkupPercent: 10,   // 10% higher for medications
+        bedMarkupPercent: 25         // 25% higher for bed charges
     },
     paymentMethods: ['Cash', 'Card', 'Mobile Money', 'Insurance', 'HMS Wallet'],
     receiptPrefix: 'REC',
     hospitalAddress: 'Kampala, Uganda',
     hospitalPhone: '+256 700 000000'
+};
+
+const initialFacilitiesData = [
+    { id: 'FAC-001', name: 'Private Wing', description: 'Luxurious private rooms with premium amenities', image: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800', features: ['24/7 Nursing Care', 'Private Bathroom', 'TV & Wi-Fi', 'Meals Included'], status: 'Active' },
+    { id: 'FAC-002', name: 'Maternity Ward', description: 'Specialized care for mothers and newborns', image: 'https://images.unsplash.com/photo-1584515933487-779824d29309?w=800', features: ['Labor Rooms', 'Neonatal Care', 'Lactation Support'], status: 'Active' },
+    { id: 'FAC-003', name: 'ICU', description: 'Intensive care unit with advanced monitoring', image: 'https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=800', features: ['24/7 Monitoring', 'Ventilators', 'Specialized Staff'], status: 'Active' }
+];
+
+const initialHospitalProfile = {
+    name: 'Adekis Hospital',
+    taxId: '',
+    npiNumber: '',
+    licenseNumber: '',
+    address: '',
+    city: '',
+    country: 'Uganda',
+    phone: '',
+    email: '',
+    website: '',
+    specialties: [],
+    accreditations: [],
+    operatingHours: '24/7 Emergency, Mon-Sat 8AM-6PM Outpatient',
+    emergencyCoverage: true,
+    bedCapacity: '',
+    established: ''
 };
 
 
@@ -1934,16 +1971,21 @@ export const DataProvider = ({ children }) => {
     const [modules, setModules] = useState(initialModules);
 
     const toggleModule = (moduleId) => {
-        setModules(prev => prev.map(m => m.id === moduleId ? { ...m, enabled: !m.enabled } : m));
+        setModules(prev => prev.map(mod =>
+            mod.id === moduleId ? { ...mod, enabled: !mod.enabled } : mod
+        ));
     };
 
-    // Insurance Module State - USING API
+    // Hospital Profile
     const [insuranceProviders, setInsuranceProviders] = useState([]);
     const [insuranceClaims, setInsuranceClaims] = useState([]);
 
     // Fetch Insurance data from API
     useEffect(() => {
         const fetchInsuranceData = async () => {
+            const token = localStorage.getItem('hms_auth_token');
+            if (!token) return;
+
             try {
                 const [providers, claims] = await Promise.all([
                     insuranceAPI.getProviders(),
@@ -2013,7 +2055,22 @@ export const DataProvider = ({ children }) => {
     // CRUD Operations for Patients
     const addPatient = async (patientData) => {
         try {
-            const newPatient = await patientsAPI.create(patientData);
+            // Generate readable ID if not provided
+            let finalPatientData = { ...patientData };
+
+            if (!finalPatientData.patientId) {
+                // Determine type based on category or default to 'regular'
+                let type = 'regular';
+                const cat = (patientData.patientCategory || '').toLowerCase();
+                if (cat.includes('pediatric')) type = 'pediatric';
+                else if (cat.includes('maternity')) type = 'maternity';
+                else if (cat.includes('emergency')) type = 'emergency';
+                else if (cat.includes('walk-in') || cat.includes('walkin')) type = 'walkin';
+
+                finalPatientData.patientId = generatePatientId(patients, type);
+            }
+
+            const newPatient = await patientsAPI.create(finalPatientData);
             setPatients(prev => [newPatient, ...prev]);
             return { success: true, patient: newPatient };
         } catch (err) {
@@ -2044,6 +2101,32 @@ export const DataProvider = ({ children }) => {
         }
     };
 
+
+    // Website Integration Data
+    const [websiteAppointments, setWebsiteAppointments] = useState([]);
+    const [walletTopUpRequests, setWalletTopUpRequests] = useState([]);
+
+    // Initialize Website Data
+    useEffect(() => {
+        const fetchWebsiteData = async () => {
+            const token = localStorage.getItem('hms_auth_token');
+            if (!token) return;
+
+            try {
+                const [appoints, requests] = await Promise.all([
+                    websiteAPI.getAppointments(),
+                    websiteAPI.getWalletRequests()
+                ]);
+                setWebsiteAppointments(appoints);
+                setWalletTopUpRequests(requests);
+            } catch (err) {
+                console.error("Error fetching website data:", err);
+            }
+        };
+        fetchWebsiteData();
+    }, []);
+
+
     // ==================== APPOINTMENTS (API-BACKED) ====================
     const [appointments, setAppointments] = useState([]);
     const [appointmentsLoading, setAppointmentsLoading] = useState(true);
@@ -2056,6 +2139,9 @@ export const DataProvider = ({ children }) => {
     }, []);
 
     const fetchAppointments = async () => {
+        const token = localStorage.getItem('hms_auth_token');
+        if (!token) return;
+
         try {
             setAppointmentsLoading(true);
             const { appointmentsAPI } = await import('../services/api');
@@ -2104,6 +2190,9 @@ export const DataProvider = ({ children }) => {
     }, []);
 
     const fetchBills = async () => {
+        const token = localStorage.getItem('hms_auth_token');
+        if (!token) return;
+
         try {
             setBillsLoading(true);
             const { billsAPI } = await import('../services/api');
@@ -2118,9 +2207,27 @@ export const DataProvider = ({ children }) => {
 
     const addBill = async (billData) => {
         try {
-            const { billsAPI } = await import('../services/api');
-            const newBill = await billsAPI.create(billData);
+            // Generate shorter, sequential invoice ID
+            const year = new Date().getFullYear();
+            const sequenceNum = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
+            const invoiceId = `INV-${year}-${sequenceNum}`;
+
+            // Create bill record directly without mock API
+            const newBill = {
+                id: invoiceId,
+                date: billData.date || new Date().toISOString(),
+                status: billData.status || 'Pending',
+                ...billData, // Spread first
+                patientName: billData.patientName || 'Unknown', // Then override to ensure it's preserved
+                createdAt: new Date().toISOString()
+            };
+
+            // Update both bills and financialRecords for compatibility
             setBills(prev => [newBill, ...prev]);
+            setFinancialRecords(prev => [newBill, ...prev]);
+
+            console.log('Bill added successfully:', newBill);
+
             return { success: true, bill: newBill };
         } catch (err) {
             console.error("Failed to add bill:", err);
@@ -2236,6 +2343,18 @@ export const DataProvider = ({ children }) => {
         }
     };
 
+    const deleteService = async (id) => {
+        try {
+            const { servicesAPI } = await import('../services/api');
+            await servicesAPI.delete(id);
+            setServices(prev => prev.filter(s => s.id !== id));
+            return { success: true };
+        } catch (err) {
+            console.error("Failed to delete service:", err);
+            return { success: false, error: err.message };
+        }
+    };
+
     // Keep existing cases state (will migrate later if needed)
     const [cases, setCases] = useState(() => {
         const saved = localStorage.getItem('hms_cases');
@@ -2287,6 +2406,71 @@ export const DataProvider = ({ children }) => {
         const saved = localStorage.getItem('hms_wallet');
         return saved ? JSON.parse(saved) : initialWalletData;
     });
+
+    const createWallet = async (walletData) => {
+        try {
+            const newWallet = {
+                ...walletData,
+                id: `W-${Date.now()}`,
+                balance: Number(walletData.balance) || 0
+            };
+            setWalletRecords(prev => [newWallet, ...prev]);
+            return { success: true, wallet: newWallet };
+        } catch (error) {
+            console.error("Failed to create wallet:", error);
+            return { success: false, error: error.message };
+        }
+    };
+
+    const topUpWallet = async (walletId, amount) => {
+        try {
+            setWalletRecords(prev => prev.map(w =>
+                w.id === walletId
+                    ? { ...w, balance: (w.balance || 0) + Number(amount), lastTransaction: new Date().toISOString().split('T')[0] }
+                    : w
+            ));
+            return { success: true };
+        } catch (error) {
+            console.error("Failed to top up wallet:", error);
+            return { success: false, error: error.message };
+        }
+    };
+
+    const approveWalletTopUp = async (requestId) => {
+        try {
+            const request = walletTopUpRequests.find(r => r.id === requestId);
+            if (request && request.status === 'Pending') {
+
+                // Handle New Wallet Application
+                if (request.type === 'New Wallet Application') {
+                    const newWallet = {
+                        id: `W-${Date.now()}`,
+                        cardholder: request.patientName,
+                        packageType: request.packageId || 'standard',
+                        balance: 0,
+                        members: [],
+                        cardNumber: Math.floor(Math.random() * 10000000000000000).toString(),
+                        expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 3)).toISOString().split('T')[0],
+                        status: 'Active',
+                        createdAt: new Date().toISOString()
+                    };
+                    setWalletRecords(prev => [newWallet, ...prev]);
+                }
+
+                // Update in backend
+                await websiteAPI.updateWalletRequestStatus(requestId, 'Approved');
+
+                // Update local state
+                setWalletTopUpRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: 'Approved' } : r));
+
+                return { success: true };
+            }
+        } catch (error) {
+            console.error("Error approving wallet request:", error);
+            return { success: false, message: error.message };
+        }
+        return { success: false, message: 'Request could not be processed' };
+    };
 
     const [wards, setWards] = useState(() => {
         const saved = localStorage.getItem('hms_wards');
@@ -2750,6 +2934,21 @@ export const DataProvider = ({ children }) => {
 
     useEffect(() => { localStorage.setItem('hms_printer_settings', JSON.stringify(printerSettings)); }, [printerSettings]);
 
+    const [hospitalProfile, setHospitalProfile] = useState(() => {
+        const saved = localStorage.getItem('hms_hospital_profile');
+        return saved ? JSON.parse(saved) : initialHospitalProfile;
+    });
+
+    useEffect(() => { localStorage.setItem('hms_hospital_profile', JSON.stringify(hospitalProfile)); }, [hospitalProfile]);
+
+    // Facilities Data
+    const [facilities, setFacilities] = useState(() => {
+        const saved = localStorage.getItem('hms_facilities');
+        return saved ? JSON.parse(saved) : initialFacilitiesData;
+    });
+
+    useEffect(() => { localStorage.setItem('hms_facilities', JSON.stringify(facilities)); }, [facilities]);
+
 
 
     // useEffect(() => { localStorage.setItem('hms_patients', JSON.stringify(patients)); }, [patients]);
@@ -3028,7 +3227,8 @@ export const DataProvider = ({ children }) => {
         financial: financialRecords.length,
         clinical: clinicalRecords.length,
         users: users.length,
-        settings: Object.keys(systemSettings).length,
+
+        settings: Object.keys(systemSettings || {}).length, // Add safety check here too just in case
         insurance: insuranceProviders.length,
         services: servicesData.length,
         debt: debtRecords.length,
@@ -3274,7 +3474,25 @@ export const DataProvider = ({ children }) => {
         }
     };
 
+    const createWalletRequest = async (requestData) => {
+        try {
+            const newRequest = {
+                id: `REQ-${Date.now()}`,
+                status: 'Pending',
+                date: new Date().toISOString(),
+                ...requestData
+            };
+            setWalletTopUpRequests(prev => [newRequest, ...prev]);
+            return { success: true };
+        } catch (error) {
+            console.error(error);
+            return { success: false, error: error.message };
+        }
+    };
+
     const value = {
+        // ... (other values)
+
         resetHistory,
         servicesData,
         debtRecords,
@@ -3306,6 +3524,7 @@ export const DataProvider = ({ children }) => {
         setPrescriptions,
         setCamps,
         setFinancialRecords,
+
         // Nursing Module Setters
         setVitalSigns,
         setNursingNotes,
@@ -3425,6 +3644,7 @@ export const DataProvider = ({ children }) => {
         setServices,
         addService,
         updateService,
+        deleteService,
         fetchServices,
         servicesLoading,
 
@@ -3439,6 +3659,10 @@ export const DataProvider = ({ children }) => {
 
         // User Data
         usersData, setUsersData,
+
+        // System Settings
+        systemSettings, setSystemSettings,
+        hospitalProfile, setHospitalProfile,
 
         // Admin Functions
         performDataReset,
@@ -3468,7 +3692,25 @@ export const DataProvider = ({ children }) => {
         createPayrollEntry,
         updatePayrollStatus,
         modules,
-        toggleModule
+        toggleModule,
+
+        // Facilities Data
+        facilities,
+        setFacilities,
+
+        // Medical Cases
+        cases,
+        setCases,
+
+        // Website Integration
+        websiteAppointments,
+        setWebsiteAppointments,
+        walletTopUpRequests,
+        setWalletTopUpRequests,
+        approveWalletTopUp,
+        createWallet,
+        topUpWallet,
+        createWalletRequest
     };
 
     return (

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
+import { useCurrency } from '../context/CurrencyContext';
 import { Users, Calendar, Activity, DollarSign, Download, Plus, UserPlus, Clock, X, CheckCircle } from 'lucide-react';
 import {
     AreaChart,
@@ -41,8 +43,35 @@ const StatCard = ({ title, value, change, trend, color, icon: Icon }) => (
 );
 
 const Dashboard = () => {
-    const { appointments, setAppointments, patients } = useData();
+    const { appointments, setAppointments, patients, bills } = useData();
+    const { currentUser } = useAuth();
+    const { formatCurrency } = useCurrency();
     const [showBookingModal, setShowBookingModal] = useState(false);
+
+    // Get time-based greeting
+    const getGreeting = () => {
+        const hour = new Date().getHours();
+        if (hour < 12) return 'Good Morning';
+        if (hour < 18) return 'Good Afternoon';
+        return 'Good Evening';
+    };
+
+    // Get user display name with title
+    const getUserDisplayName = () => {
+        if (!currentUser) return 'User';
+
+        const name = currentUser.name || currentUser.username || 'User';
+        const role = currentUser.role || '';
+
+        // Add professional title based on role
+        if (role === 'Doctor') return `Dr. ${name}`;
+        if (role === 'Nurse') return `Nurse ${name}`;
+        if (role === 'Lab Technician') return `Lab Tech ${name}`;
+        if (role === 'Pharmacist') return `Pharm. ${name}`;
+
+        // For admin and other roles, just return name
+        return name;
+    };
 
     // Calculate appointments stats
     const todayAppointments = appointments.filter(apt => {
@@ -102,7 +131,7 @@ const Dashboard = () => {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-800">
-                        Good Morning, <span className="text-gradient">Dr. Smith</span>
+                        {getGreeting()}, <span className="text-gradient">{getUserDisplayName()}</span>
                     </h1>
                     <p className="text-slate-500 mt-1">Here's what's happening in Adekis+ today.</p>
                 </div>
@@ -141,7 +170,7 @@ const Dashboard = () => {
                 />
                 <StatCard
                     title="Operations"
-                    value="8"
+                    value={bills.filter(b => b.category === 'Surgery' || b.type === 'Surgery').length}
                     change="-2.4%"
                     trend="down"
                     color="orange"
@@ -149,7 +178,7 @@ const Dashboard = () => {
                 />
                 <StatCard
                     title="Hospital Revenue"
-                    value="UGX 52,420"
+                    value={formatCurrency(bills.reduce((sum, bill) => sum + (bill.amount || 0), 0))}
                     change="+14.6%"
                     trend="up"
                     color="emerald"
@@ -169,8 +198,8 @@ const Dashboard = () => {
                             <option>This Month</option>
                         </select>
                     </div>
-                    <div className="h-80 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
+                    <div className="h-80 w-full min-w-0">
+                        <ResponsiveContainer width="100%" height="100%" minHeight={200}>
                             <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorPatients" x1="0" y1="0" x2="0" y2="1">

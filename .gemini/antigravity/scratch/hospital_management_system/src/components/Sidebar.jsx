@@ -12,7 +12,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
   const navigate = useNavigate();
 
   const allMenuItems = [
-    { path: '/', label: 'Dashboard', permission: 'dashboard' },
+    { path: '/dashboard', label: 'Dashboard', permission: 'dashboard' },
     { path: '/reception', label: 'Reception', permission: 'reception' },
     { path: '/doctor', label: 'Doctor', permission: 'doctor' },
     { path: '/triage', label: 'Triage Station', permission: 'triage' },
@@ -30,7 +30,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     { path: '/finance', label: 'Finance & Insurance', permission: 'finance' },
     { path: '/insurance', label: 'Insurance Management', permission: 'insurance' },
     { path: '/hr', label: 'HR Management', permission: 'hr' },
-    { path: '/services', label: 'Services & Prices', permission: 'services' },
+    { path: '/manage-services', label: 'Services & Prices', permission: 'services' },
     { path: '/wallet', label: 'HMS Wallet', permission: 'wallet' },
     { path: '/communication', label: 'Communication', permission: 'communication' },
     { path: '/camps', label: 'Health Camps', permission: 'camps' },
@@ -45,8 +45,19 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     if (!isAuthenticated) return allMenuItems;
 
     return allMenuItems.filter(item => {
+      const userRole = currentUser?.role?.toLowerCase() || '';
+
+      // SPECIAL RULE: Block Receptionist from accessing Settings
+      // Fixed role check to be more robust, but currently allows Settings as desired
+      if (item.permission === 'settings' && userRole === 'reception') {
+        return false;
+      }
+
       // 1. Check User Permission
-      if (!hasPermission(item.permission)) return false;
+      // EXCEPTION: Always allow Receptionists to see Services & Prices
+      const isReceptionServices = item.permission === 'services' && userRole.includes('reception');
+
+      if (!isReceptionServices && !hasPermission(item.permission)) return false;
 
       // 2. Check if Module is Enabled
       // Find module by ID matching the permission (e.g., 'pharmacy', 'doctor')
